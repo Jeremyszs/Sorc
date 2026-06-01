@@ -3,11 +3,12 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
+docs/
 # ─── Data — live customer data & WhatsApp credentials ──────────────
 data/
 !.gitkeep
 .wwebjs_cache/
+
 
 # ─── OS ─────────────────────────────────────────────────────────────
 .DS_Store
