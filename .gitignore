@@ -1,0 +1,34 @@
+# ─── Node ───────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Data — live customer data & WhatsApp credentials ──────────────
+data/
+!.gitkeep
+.wwebjs_cache/
+
+# ─── OS ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ─── Editor ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Environment ────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── Logs ───────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Env example (template for others) ─────────────────────────────
+# .env.example — committed, .env itself is not above

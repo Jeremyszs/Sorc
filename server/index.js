@@ -1,0 +1,470 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
+const path = require('path');
+const { config, db, DEFAULT_BOT_CONFIG } = require('./config');
+const logger = require('./logger');
+const whatsapp = require('./whatsapp');
+const analytics = require('./analytics');
+const knowledgeBase = require('./knowledge-base');
+const conversationState = require('./conversation-state');
+const auth = require('./auth');
+const port = process.env.PORT || 3000;
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    methods: ['GET', 'POST'],
+  },
+});
+
+// Apply Socket.IO auth middleware
+io.use(auth.authenticateSocket);
+
+// ---------------------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------------------
+app.use(cors({ origin: ['http://localhost:3000', 'http://127.0.0.1:3000'] }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Auth middleware — protects all /api/ routes except /api/auth/login
+app.use('/api', (req, res, next) => {
+  if (req.path === '/auth/login') return next();
+  auth.requireAuth(req, res, next);
+});
+
+// ---------------------------------------------------------------------------
+// Socket.IO — client connections
+// ---------------------------------------------------------------------------
+io.on('connection', (socket) => {
+  logger.info(`Client connected: ${socket.id}`);
+
+  // ── Immediate state on connect ──────────────────────────────────────────
+  socket.emit('config:updated', config.current);
+  socket.emit('analytics:update', analytics.getStats());
+  socket.emit('kb:stats', knowledgeBase.getStats());
+  socket.emit('handoff:list', conversationState.getAll());
+
+  // Last 100 logs (oldest-first so the UI appends naturally)
+  const lastLogs = db
+    .prepare('SELECT * FROM logs ORDER BY timestamp DESC LIMIT 100')
+    .all()
+    .reverse()
+    .map((row) => ({
+      ...row,
+      metadata: row.metadata ? JSON.parse(row.metadata) : null,
+    }));
+  socket.emit('logs:init', lastLogs);
+
+  socket.emit('wa:status', { connected: whatsapp.ready });
+
+  // ── Config event with schema validation ──────────────────────────────
+  socket.on('config:save', (newConfig) => {
+    if (!newConfig || typeof newConfig !== 'object') {
+      logger.warn('Invalid config payload from client', { from: socket.id });
+      return;
+    }
+
+    // Only allow known top-level keys from DEFAULT_BOT_CONFIG
+    const allowedKeys = new Set(Object.keys(DEFAULT_BOT_CONFIG));
+    const unknownKeys = Object.keys(newConfig).filter((k) => !allowedKeys.has(k));
+    if (unknownKeys.length > 0) {
+      logger.warn('Config payload contained unknown keys', { keys: unknownKeys, from: socket.id });
+      for (const key of unknownKeys) delete newConfig[key];
+    }
+
+    // Sanitise string values: strip null bytes
+    const sanitise = (obj) => {
+      for (const [k, v] of Object.entries(obj)) {
+        if (typeof v === 'string') obj[k] = v.replace(/\0/g, '');
+        else if (v && typeof v === 'object') sanitise(v);
+      }
+    };
+    sanitise(newConfig);
+
+    config.save(newConfig);
+    io.emit('config:updated', config.current);
+  });
+
+  socket.on('config:get', () => {
+    socket.emit('config:updated', config.current);
+  });
+
+  socket.on('disconnect', () => {
+    logger.info(`Client disconnected: ${socket.id}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Knowledge Base API — multi-entry CRUD
+// ---------------------------------------------------------------------------
+
+/** GET /api/knowledge — list all entries */
+app.get('/api/knowledge', (_req, res) => {
+  res.json(knowledgeBase.getAll());
+});
+
+/** POST /api/knowledge — create new entry */
+app.post('/api/knowledge', express.json({ limit: '10mb' }), async (req, res) => {
+  try {
+    const { title, content } = req.body || {};
+    if (!content || typeof content !== 'string' || !content.trim()) {
+      return res.status(400).json({ error: 'content field is required' });
+    }
+    const result = knowledgeBase.create(title, content);
+    const stats = knowledgeBase.getStats();
+    io.emit('kb:stats', stats);
+    res.json({ ...result, stats });
+  } catch (err) {
+    logger.error('Knowledge API error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** PUT /api/knowledge/:id — update an entry */
+app.put('/api/knowledge/:id', express.json({ limit: '10mb' }), (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'invalid id' });
+  const { title, content } = req.body || {};
+  if (!content || typeof content !== 'string' || !content.trim()) {
+    return res.status(400).json({ error: 'content field is required' });
+  }
+  knowledgeBase.update(id, title, content);
+  const stats = knowledgeBase.getStats();
+  io.emit('kb:stats', stats);
+  res.json({ ok: true, stats });
+});
+
+/** DELETE /api/knowledge/:id — delete one entry */
+app.delete('/api/knowledge/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'invalid id' });
+  knowledgeBase.delete(id);
+  const stats = knowledgeBase.getStats();
+  io.emit('kb:stats', stats);
+  res.json({ ok: true, stats });
+});
+
+/** DELETE /api/knowledge — clear all entries */
+app.delete('/api/knowledge', (_req, res) => {
+  knowledgeBase.clear();
+  const stats = knowledgeBase.getStats();
+  io.emit('kb:stats', stats);
+  res.json({ ok: true, stats });
+});
+
+/** GET /api/knowledge/stats — entry count */
+app.get('/api/knowledge/stats', (_req, res) => {
+  res.json(knowledgeBase.getStats());
+});
+
+// ---------------------------------------------------------------------------
+// Auth API (no auth required — handles login)
+// ---------------------------------------------------------------------------
+app.post('/api/auth/login', express.json(), (req, res) => {
+  const { password } = req.body || {};
+  if (!auth.validatePassword(password)) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+  return res.json({ token: auth.hash(password), enabled: auth.AUTH_ENABLED });
+});
+
+// ---------------------------------------------------------------------------
+// Handoff API
+// ---------------------------------------------------------------------------
+
+/** GET /api/handoffs — list all conversation states */
+app.get('/api/handoffs', (_req, res) => {
+  res.json(conversationState.getAll());
+});
+
+/** POST /api/handoffs/:phone/reset — reset a number back to bot mode */
+app.post('/api/handoffs/:phone/reset', (req, res) => {
+  conversationState.reset(req.params.phone);
+  const all = conversationState.getAll();
+  io.emit('handoff:list', all);
+  res.json({ ok: true, state: all });
+});
+
+/** POST /api/handoffs/:phone/disable — manually set human intervention */
+app.post('/api/handoffs/:phone/disable', (req, res) => {
+  conversationState.requestHuman(req.params.phone);
+  const all = conversationState.getAll();
+  io.emit('handoff:list', all);
+  res.json({ ok: true, state: all });
+});
+
+/** GET /api/handoffs/pending — return pending count */
+app.get('/api/handoffs/pending', (_req, res) => {
+  const count = conversationState.getPendingCount();
+  const items = conversationState.getPendingHumanRequests();
+  res.json({ count, items });
+});
+
+// ---------------------------------------------------------------------------
+// Conversations API
+// ---------------------------------------------------------------------------
+
+/** GET /api/conversations — list all conversations with metadata */
+app.get('/api/conversations', (_req, res) => {
+  try {
+    // Group received messages by sender, get latest per phone
+    const rows = db.prepare(`
+      SELECT
+        m.phone,
+        m.body AS last_preview,
+        m.timestamp AS last_time,
+        cs.bot_mode,
+        cs.human_intervention_requested,
+        cs.display_name,
+        cs.unread_count
+      FROM (
+        SELECT
+          SUBSTR(from_number, 1, INSTR(from_number || '@', '@') - 1) AS phone,
+          body, timestamp,
+          ROW_NUMBER() OVER (PARTITION BY from_number ORDER BY timestamp DESC) AS rn
+        FROM messages
+        WHERE direction = 'received'
+      ) m
+      LEFT JOIN conversation_state cs ON cs.phone = m.phone
+      WHERE m.rn = 1
+      ORDER BY m.timestamp DESC
+    `).all();
+
+    const conversations = rows.map((r) => ({
+      phone: r.phone,
+      lastPreview: r.last_preview ? r.last_preview.slice(0, 120) : '',
+      lastTime: r.last_time,
+      botMode: r.bot_mode !== 0,
+      needsHuman: r.human_intervention_requested === 1,
+      displayName: r.display_name || null,
+      unread: r.unread_count || 0,
+    }));
+
+    res.json(conversations);
+  } catch (err) {
+    logger.error('Conversations API error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** GET /api/conversations/:phone/messages — full message history for a phone */
+app.get('/api/conversations/:phone/messages', (req, res) => {
+  try {
+    const phone = req.params.phone;
+    // Match both bare phone and JID format
+    const likeJid = '%' + phone.replace(/[^0-9]/g, '') + '%';
+    const messages = db.prepare(`
+      SELECT id, body, timestamp, direction, is_ai_reply
+      FROM messages
+      WHERE (from_number LIKE ? OR to_number LIKE ?)
+      ORDER BY timestamp ASC
+      LIMIT 200
+    `).all(likeJid, likeJid);
+
+    // Mark conversation as read when messages are fetched
+    try {
+      conversationState.markAsRead(phone.replace(/[^0-9]/g, ''));
+      io.emit('conversations:update');
+    } catch (_) {
+      // Non-critical — unread reset failure should not block the response
+    }
+
+    res.json({
+      phone,
+      messages: messages.map((m) => ({
+        id: m.id,
+        body: m.body,
+        timestamp: m.timestamp,
+        direction: m.direction,
+        is_ai_reply: m.is_ai_reply === 1,
+      })),
+    });
+  } catch (err) {
+    logger.error('Conversation messages API error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** POST /api/send-message — send a message from the dashboard */
+app.post('/api/send-message', express.json(), async (req, res) => {
+  try {
+    const { phone, message } = req.body || {};
+    if (!phone || !message || !message.trim()) {
+      return res.status(400).json({ error: 'phone and message are required' });
+    }
+    // Ensure JID format
+    const jid = phone.includes('@') ? phone : phone + '@c.us';
+    await whatsapp.sendMessage(jid, message.trim(), { isAiReply: false });
+    // Broadcast conversation update
+    io.emit('conversations:update');
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Send message API error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Knowledge Base preview (P2-10)
+// ---------------------------------------------------------------------------
+app.get('/api/knowledge/preview', (_req, res) => {
+  try {
+    const context = knowledgeBase.buildContext();
+    const stats = knowledgeBase.getStats();
+    res.json({ context, entriesCount: stats.entries, totalChars: stats.chars });
+  } catch (err) {
+    logger.error('Knowledge preview API error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Hook into message processing — broadcast conversation updates
+// ---------------------------------------------------------------------------
+const originalLogListener = logger.listeners('log:new')?.[0];
+// After bot engine processes a message, broadcast conversation updates
+// This is handled by the BotEngine calling whatsapp.sendMessage()
+// We hook into the message handler via WhatsApp client events
+whatsapp.on('message:sent', () => {
+  io.emit('conversations:update');
+});
+
+// ---------------------------------------------------------------------------
+// Forward logger events → all clients
+// ---------------------------------------------------------------------------
+logger.on('log:new', (logEntry) => {
+  io.emit('log:new', logEntry);
+});
+
+// ---------------------------------------------------------------------------
+// Periodic analytics broadcast (every 10 s)
+// ---------------------------------------------------------------------------
+const analyticsInterval = setInterval(() => {
+  io.emit('analytics:update', analytics.getStats());
+}, 10000);
+
+// ---------------------------------------------------------------------------
+// Database housekeeping — prune old records every hour
+// ---------------------------------------------------------------------------
+const RETENTION_DAYS = 30;
+const RETENTION_MS = RETENTION_DAYS * 86_400_000;
+
+function pruneOldData() {
+  const cutoff = Date.now() - RETENTION_MS;
+  try {
+    const logPruned = db.prepare('DELETE FROM logs WHERE timestamp < ?').run(cutoff).changes;
+    const msgPruned = db.prepare('DELETE FROM messages WHERE timestamp < ?').run(cutoff).changes;
+    const analyticsPruned = db.prepare('DELETE FROM analytics WHERE timestamp < ?').run(cutoff).changes;
+    if (logPruned + msgPruned + analyticsPruned > 0) {
+      logger.info('Pruned old records', { logs: logPruned, messages: msgPruned, analytics: analyticsPruned });
+    }
+  } catch (err) {
+    logger.warn('Failed to prune old data', { error: err.message });
+  }
+
+  // Auto-reset stale handoff requests (P2-9)
+  try {
+    if (config.current.conversationTimeout?.enabled !== false) {
+      const hours = config.current.conversationTimeout?.hours || 24;
+      const cutoff2 = Date.now() - hours * 3_600_000;
+      const stale = db.prepare(
+        "SELECT phone FROM conversation_state WHERE human_intervention_requested = 1 AND updated_at < ?"
+      ).all(cutoff2);
+      for (const row of stale) {
+        conversationState.reset(row.phone);
+        logger.info('Auto-reset stale handoff', { phone: row.phone });
+      }
+      if (stale.length > 0) {
+        io.emit('handoff:list', conversationState.getAll());
+      }
+    }
+  } catch (err) {
+    logger.warn('Auto-reset stale conversations failed', { error: err.message });
+  }
+}
+
+pruneOldData();
+const pruneInterval = setInterval(pruneOldData, 6 * 3_600_000);
+
+// ---------------------------------------------------------------------------
+// WhatsApp client
+// ---------------------------------------------------------------------------
+whatsapp.on('wa:status', (status) => io.emit('wa:status', status));
+whatsapp.on('wa:qr', (qrDataUrl) => io.emit('wa:qr', qrDataUrl));
+
+// ---------------------------------------------------------------------------
+// Router health proxy
+// ---------------------------------------------------------------------------
+app.get('/api/router-health', async (_req, res) => {
+  try {
+    const routerUrl = (config.current.aiSettings?.endpoint || 'http://localhost:20128/v1').replace(/\/+$/, '');
+    const r = await fetch(routerUrl + '/models', { signal: AbortSignal.timeout(4000) });
+    res.json({ connected: r.ok });
+  } catch {
+    res.json({ connected: false });
+  }
+});
+
+/** POST /api/whatsapp/logout — force logout and clear session */
+app.post('/api/whatsapp/logout', async (_req, res) => {
+  try {
+    await whatsapp.forceLogout();
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Force logout API error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Start server
+// ---------------------------------------------------------------------------
+server.listen(port, () => {
+  logger.info('Server started on port ' + port + (auth.AUTH_ENABLED ? ' (auth enabled)' : ' (no auth)'));
+
+  whatsapp.initialize().catch((err) => {
+    logger.error('Failed to initialize WhatsApp client', err.message);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Top-level error handlers
+// ---------------------------------------------------------------------------
+process.on('unhandledRejection', (err) => {
+  logger.error('Unhandled promise rejection', { error: err?.message || err });
+});
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', { error: err?.message || err });
+});
+
+// ---------------------------------------------------------------------------
+// Health check
+// ---------------------------------------------------------------------------
+app.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    wa: { connected: whatsapp.ready },
+    uptime: process.uptime(),
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Graceful shutdown
+// ---------------------------------------------------------------------------
+async function shutdown(signal) {
+  logger.info(`Shutting down (${signal})…`);
+  clearInterval(analyticsInterval);
+  clearInterval(pruneInterval);
+  await whatsapp.logout();
+  try { db.close(); } catch { /* ignore */ }
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 8000);
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
