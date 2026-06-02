@@ -52,9 +52,11 @@
       LOGIN_ERROR.style.display = 'none';
 
       try {
+        let headers = { 'Content-Type': 'application/json' };
+        if (window.__authToken) headers['Authorization'] = 'Bearer ' + window.__authToken;
         const res = await fetch('/api/auth/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ password }),
         });
 

@@ -19,17 +19,111 @@
 
   let _conversations = [];
   let _currentPhone = null;
+  let _refreshTimer = null;
+  let _selectionMode = false;
+  let _selectedPhones = new Set();
+
+  // ---- Selection bar (inserted above the list) --------------------------
+  const selectionBar = document.createElement('div');
+  selectionBar.style.cssText = 'display:none;align-items:center;gap:var(--space-3);padding:0 0 var(--space-3) 0;';
+  selectionBar.innerHTML =
+    '<span id="conv-sel-count" style="font-size:11px;color:var(--text-secondary);flex:1;"></span>' +
+    '<button id="conv-sel-delete" class="btn btn-danger btn-sm">Delete Selected</button>' +
+    '<button id="conv-sel-cancel" class="btn btn-secondary btn-sm">Cancel</button>';
+  const listBody = listEl.parentNode;
+  listBody.insertBefore(selectionBar, listEl);
+
+  const selCountEl = document.getElementById('conv-sel-count');
+  const selDeleteBtn = document.getElementById('conv-sel-delete');
+  const selCancelBtn = document.getElementById('conv-sel-cancel');
+
+  if (selCancelBtn) {
+    selCancelBtn.addEventListener('click', () => {
+      _selectedPhones.clear();
+      _selectionMode = false;
+      selectionBar.style.display = 'none';
+      renderConversations();
+    });
+  }
+
+  if (selDeleteBtn) {
+    selDeleteBtn.addEventListener('click', async () => {
+      const count = _selectedPhones.size;
+      if (count === 0) return;
+      const ok = await showConfirm(
+        'Delete Conversations',
+        'Delete ' + count + ' conversation' + (count > 1 ? 's' : '') + ' and all their messages? This cannot be undone.'
+      );
+      if (!ok) return;
+      const phones = [..._selectedPhones];
+      selDeleteBtn.disabled = true;
+      try {
+        const res = await apiFetch('/api/conversations', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phones }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Batch delete failed (status ' + res.status + ')');
+        }
+        showToast('Deleted ' + count + ' conversation' + (count > 1 ? 's' : ''), 'success');
+        _selectedPhones.clear();
+        _selectionMode = false;
+        selectionBar.style.display = 'none';
+        // Re-fetch data immediately
+        await loadConversations();
+        if (_currentPhone) {
+          const refresh = await apiFetch('/api/conversations/' + encodeURIComponent(_currentPhone) + '/messages');
+          if (refresh.ok) {
+            const data = await refresh.json();
+            renderMessages(data.messages || []);
+          } else if (refresh.status === 404) {
+            // Conversation was deleted — go back to list
+            _currentPhone = null;
+            if (detailPane) detailPane.style.display = 'none';
+            if (listPane) listPane.style.display = 'block';
+          }
+        }
+      } catch (err) {
+        console.error('Batch delete error:', err);
+        showToast(err.message, 'error');
+      } finally {
+        selDeleteBtn.disabled = false;
+      }
+    });
+  }
+
+  // ---- Toggle selection mode from header ---------------------------------
+  function ensureSelectionToggle() {
+    const header = listPane?.querySelector('.swiss-card-header');
+    if (!header || header.querySelector('#conv-sel-toggle-btn')) return;
+    const toggleBtn = document.createElement('button');
+    toggleBtn.id = 'conv-sel-toggle-btn';
+    toggleBtn.className = 'btn btn-secondary btn-sm';
+    toggleBtn.textContent = 'Select';
+    toggleBtn.style.cssText = 'padding:2px 10px;font-size:9px;';
+    toggleBtn.addEventListener('click', () => {
+      _selectionMode = !_selectionMode;
+      if (!_selectionMode) {
+        _selectedPhones.clear();
+        selectionBar.style.display = 'none';
+      }
+      renderConversations();
+    });
+    header.appendChild(toggleBtn);
+  }
+  ensureSelectionToggle();
 
   // ---- Load conversation list -----------------------------------------
 
   async function loadConversations() {
     try {
-      const res = await fetch('/api/conversations');
-      if (res.status === 401) {
-        if (typeof window.__handleAuthError === 'function') window.__handleAuthError();
-        return;
+      const res = await apiFetch('/api/conversations');
+      if (!res.ok) {
+        if (res.status === 401) return;
+        throw new Error('Failed to load');
       }
-      if (!res.ok) throw new Error('Failed to load');
       _conversations = await res.json();
       renderConversations();
     } catch (err) {
@@ -42,67 +136,93 @@
       listEl.innerHTML = '';
       emptyEl.style.display = '';
       if (headerCount) headerCount.textContent = '';
+      selectionBar.style.display = 'none';
       return;
     }
     emptyEl.style.display = 'none';
     if (headerCount) headerCount.textContent = _conversations.length + ' conversations';
 
+    // Update selection bar
+    if (_selectionMode) {
+      selCountEl.textContent = _selectedPhones.size + ' selected';
+      const selToggle = document.querySelector('#conv-sel-toggle-btn');
+      if (selToggle) selToggle.textContent = 'Cancel';
+      selectionBar.style.display = 'flex';
+    } else {
+      selectionBar.style.display = 'none';
+      const selToggle = document.querySelector('#conv-sel-toggle-btn');
+      if (selToggle) selToggle.textContent = 'Select';
+    }
+
     const fragment = document.createDocumentFragment();
 
     for (const conv of _conversations) {
       const card = document.createElement('div');
+      const isSelected = _selectedPhones.has(conv.phone);
       card.className = 'conv-card' + (conv.phone === _currentPhone ? ' selected' : '');
+      if (isSelected) card.style.borderColor = 'var(--accent)';
       card.dataset.phone = conv.phone;
-      card.style.cssText =
-        'background:var(--surface);border:1px solid var(--glass-border);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:6px;cursor:pointer;display:flex;gap:12px;align-items:flex-start;transition:background .15s;';
-      card.addEventListener('click', () => openConversation(conv.phone));
+
+      if (_selectionMode) {
+        // Selection mode — checkbox replaces click-to-open
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = isSelected;
+        cb.style.cssText = 'width:12px;height:12px;margin-top:7px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;';
+        cb.addEventListener('change', () => {
+          if (cb.checked) _selectedPhones.add(conv.phone);
+          else _selectedPhones.delete(conv.phone);
+          selCountEl.textContent = _selectedPhones.size + ' selected';
+          card.style.borderColor = cb.checked ? 'var(--accent)' : 'transparent';
+        });
+        card.appendChild(cb);
+      } else {
+        card.addEventListener('click', () => openConversation(conv.phone));
+      }
 
       const avatar = document.createElement('div');
-      avatar.style.cssText =
-        'width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0;';
+      avatar.className = 'conv-avatar';
       avatar.textContent = (conv.displayName || conv.phone || '?').charAt(0).toUpperCase();
 
       const info = document.createElement('div');
-      info.style.cssText = 'flex:1;min-width:0;';
+      info.className = 'conv-info';
 
       const row1 = document.createElement('div');
-      row1.style.cssText = 'display:flex;justify-content:space-between;align-items:baseline;';
+      row1.className = 'conv-row1';
 
       const name = document.createElement('div');
-      name.style.cssText = 'font-weight:600;font-size:14px;color:var(--text-primary);';
+      name.className = 'conv-name';
       name.textContent = conv.displayName || conv.phone || 'Unknown';
 
       const time = document.createElement('div');
-      time.style.cssText = 'font-size:10px;color:var(--text-tertiary);white-space:nowrap;margin-left:8px;';
+      time.className = 'conv-time';
       time.textContent = conv.lastTime ? formatTime(conv.lastTime) : '';
 
       row1.appendChild(name);
       row1.appendChild(time);
 
       const preview = document.createElement('div');
-      preview.style.cssText = 'font-size:12px;color:var(--text-secondary);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      preview.className = 'conv-preview';
       preview.textContent = conv.lastPreview || '';
 
       const row2 = document.createElement('div');
-      row2.style.cssText = 'display:flex;gap:6px;margin-top:4px;';
+      row2.className = 'conv-row2';
 
-      // Status tag
       if (conv.needsHuman) {
         const tag = document.createElement('span');
-        tag.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:10px;background:var(--red-soft);color:var(--red);font-weight:500;';
+        tag.className = 'conv-tag human';
         tag.textContent = 'Needs Human';
         row2.appendChild(tag);
       } else if (conv.botMode === false || conv.botMode === 0) {
         const tag = document.createElement('span');
-        tag.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:10px;background:var(--orange-soft);color:var(--orange);font-weight:500;';
+        tag.className = 'conv-tag paused';
         tag.textContent = 'Paused';
         row2.appendChild(tag);
       }
 
-      // Unread count
       if (conv.unread > 0) {
         const badge = document.createElement('span');
-        badge.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:10px;background:var(--accent);color:#fff;font-weight:600;margin-left:auto;';
+        badge.className = 'conv-badge';
         badge.textContent = conv.unread;
         row2.appendChild(badge);
       }
@@ -128,20 +248,23 @@
     if (detailPane) detailPane.style.display = 'block';
     detailTitle.textContent = phone;
     detailStatus.textContent = '';
+    const loadingEl = document.createElement('div');
+    loadingEl.className = 'empty-state';
+    loadingEl.style.cssText = 'padding:40px;color:var(--text-tertiary);font-size:11px;';
+    loadingEl.textContent = 'Loading messages…';
     messagesEl.innerHTML = '';
+    messagesEl.appendChild(loadingEl);
     emptyMsgEl.style.display = 'none';
     sendError.style.display = 'none';
     replyInput.value = '';
 
-    // Highlight in list
     document.querySelectorAll('.conv-card').forEach((c) => c.classList.remove('selected'));
 
     try {
-      const res = await fetch('/api/conversations/' + encodeURIComponent(phone) + '/messages');
+      const res = await apiFetch('/api/conversations/' + encodeURIComponent(phone) + '/messages');
       if (!res.ok) throw new Error('Failed to load messages');
       const data = await res.json();
       renderMessages(data.messages || []);
-      // Clear unread
       markRead(phone);
     } catch (err) {
       console.error('Failed to load messages:', err);
@@ -162,15 +285,13 @@
     for (const m of messages) {
       const bubble = document.createElement('div');
       const isReceived = m.direction === 'received';
-      bubble.style.cssText =
-        'max-width:80%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.45;word-wrap:break-word;align-self:' +
-        (isReceived ? 'flex-start;background:var(--surface-secondary);color:var(--text-primary);' : 'flex-end;background:var(--accent);color:#fff;');
+      bubble.classList.add('conv-bubble', isReceived ? 'received' : 'sent');
 
       const body = document.createElement('div');
       body.textContent = m.body || '';
 
       const meta = document.createElement('div');
-      meta.style.cssText = 'font-size:10px;margin-top:4px;opacity:0.6;text-align:' + (isReceived ? 'left' : 'right') + ';';
+      meta.className = 'meta';
       meta.textContent = m.timestamp ? formatTime(m.timestamp) + (m.is_ai_reply ? ' · AI' : '') : '';
 
       bubble.appendChild(body);
@@ -178,7 +299,6 @@
       messagesEl.appendChild(bubble);
     }
 
-    // Scroll to bottom
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
@@ -192,7 +312,7 @@
     sendError.style.display = 'none';
 
     try {
-      const res = await fetch('/api/send-message', {
+      const res = await apiFetch('/api/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: _currentPhone, message }),
@@ -202,7 +322,6 @@
         throw new Error(err.error || 'Send failed');
       }
       replyInput.value = '';
-      // Reload messages
       await openConversation(_currentPhone);
     } catch (err) {
       sendError.textContent = 'Failed: ' + err.message;
@@ -226,10 +345,9 @@
     if (listPane) listPane.style.display = 'block';
   });
 
-  // ---- Mark as read (placeholder) --------------------------------------
+  // ---- Mark as read ----------------------------------------------------
 
   function markRead(phone) {
-    // For now, just refresh the list
     loadConversations();
   }
 
@@ -245,15 +363,29 @@
     return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
   }
 
+  // ---- Gentle in-place refresh -----------------------------------------
+
+  async function refreshCurrentConversation() {
+    if (!_currentPhone) return;
+    try {
+      const res = await apiFetch('/api/conversations/' + encodeURIComponent(_currentPhone) + '/messages');
+      if (!res.ok) throw new Error('Failed to load messages');
+      const data = await res.json();
+      renderMessages(data.messages || []);
+    } catch (err) {
+      console.error('Failed to refresh conversation:', err);
+    }
+  }
+
   // ---- Socket events ---------------------------------------------------
 
   if (typeof socket !== 'undefined') {
     socket.on('conversations:update', () => {
       const viewActive = document.getElementById('view-conversations')?.classList.contains('active');
       if (viewActive) loadConversations();
-      // If we have a conversation open, refresh it
       if (_currentPhone) {
-        openConversation(_currentPhone);
+        clearTimeout(_refreshTimer);
+        _refreshTimer = setTimeout(refreshCurrentConversation, 400);
       }
     });
   }
@@ -261,8 +393,7 @@
   // ---- Public API ------------------------------------------------------
 
   window.renderConversations = loadConversations;
+  window.__refreshCurrentConversation = refreshCurrentConversation;
 
-  // ---- Initial load on nav ---------------------------------------------
-  // Also init on page load so data is ready
   setTimeout(loadConversations, 1000);
 })();

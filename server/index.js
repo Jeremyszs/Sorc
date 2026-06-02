@@ -48,6 +48,7 @@ io.on('connection', (socket) => {
   socket.emit('analytics:update', analytics.getStats());
   socket.emit('kb:stats', knowledgeBase.getStats());
   socket.emit('handoff:list', conversationState.getAll());
+  socket.emit('conversations:update');
 
   // Last 100 logs (oldest-first so the UI appends naturally)
   const lastLogs = db
@@ -205,6 +206,35 @@ app.get('/api/handoffs/pending', (_req, res) => {
   res.json({ count, items });
 });
 
+/** DELETE /api/handoffs/:phone — delete a handoff record */
+app.delete('/api/handoffs/:phone', (req, res) => {
+  const result = conversationState.deleteHandoff(req.params.phone);
+  const all = conversationState.getAll();
+  io.emit('handoff:list', all);
+  io.emit('conversations:update');
+  res.json({ ok: true, ...result });
+});
+
+/** DELETE /api/handoffs — batch delete handoff records */
+app.delete('/api/handoffs', express.json(), (req, res) => {
+  try {
+    const { phones } = req.body || {};
+    if (!phones || !Array.isArray(phones) || phones.length === 0) {
+      return res.status(400).json({ error: 'phones array is required' });
+    }
+    for (const phone of phones) {
+      conversationState.deleteHandoff(phone);
+    }
+    const all = conversationState.getAll();
+    io.emit('handoff:list', all);
+    io.emit('conversations:update');
+    res.json({ ok: true, deleted: phones.length });
+  } catch (err) {
+    logger.error('Batch delete handoffs API error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Conversations API
 // ---------------------------------------------------------------------------
@@ -309,6 +339,41 @@ app.post('/api/send-message', express.json(), async (req, res) => {
   }
 });
 
+/** DELETE /api/conversations/:phone — delete conversation + messages */
+app.delete('/api/conversations/:phone', (req, res) => {
+  try {
+    const phone = req.params.phone;
+    const result = conversationState.deleteConversation(phone);
+    io.emit('conversations:update');
+    io.emit('handoff:list', conversationState.getAll());
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    logger.error('Delete conversation API error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** DELETE /api/conversations — batch delete conversations */
+app.delete('/api/conversations', express.json(), (req, res) => {
+  try {
+    const { phones } = req.body || {};
+    if (!phones || !Array.isArray(phones) || phones.length === 0) {
+      return res.status(400).json({ error: 'phones array is required' });
+    }
+    let total = 0;
+    for (const phone of phones) {
+      const result = conversationState.deleteConversation(phone);
+      total += result.messagesRemoved || 0;
+    }
+    io.emit('conversations:update');
+    io.emit('handoff:list', conversationState.getAll());
+    res.json({ ok: true, deleted: phones.length, messagesRemoved: total });
+  } catch (err) {
+    logger.error('Batch delete conversations API error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Knowledge Base preview (P2-10)
 // ---------------------------------------------------------------------------
@@ -324,13 +389,25 @@ app.get('/api/knowledge/preview', (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Hook into message processing — broadcast conversation updates
+// Hook into message processing — broadcast conversation & handoff updates
 // ---------------------------------------------------------------------------
-const originalLogListener = logger.listeners('log:new')?.[0];
-// After bot engine processes a message, broadcast conversation updates
-// This is handled by the BotEngine calling whatsapp.sendMessage()
-// We hook into the message handler via WhatsApp client events
 whatsapp.on('message:sent', () => {
+  io.emit('conversations:update');
+});
+
+// When any message arrives (including during bot-paused/handoff mode),
+// broadcast both conversation list and handoff state so the dashboard
+// stays updated without needing a manual refresh.
+whatsapp.on('message:received', () => {
+  io.emit('conversations:update');
+  io.emit('handoff:list', conversationState.getAll());
+});
+
+// When bot-engine triggers a human handoff, broadcast immediately
+// so the handoff nav badge and list appear in real-time.
+const botEngine = require('./bot-engine');
+botEngine.on('handoff:triggered', () => {
+  io.emit('handoff:list', conversationState.getAll());
   io.emit('conversations:update');
 });
 

@@ -63,9 +63,38 @@ function navigateTo(target) {
     renderAllLogs();
   }
 
-  // Lazy: re-render handoffs
-  if (target === 'handoffs' && typeof renderHandoffs === 'function') {
-    renderHandoffs();
+  // Lazy: re-render handoffs with fresh API data
+  if (target === 'handoffs') {
+    apiFetch('/api/handoffs').then(r => r.ok && r.json()).then(list => {
+      if (list) window._handoffList = list;
+      if (typeof renderHandoffs === 'function') renderHandoffs();
+    }).catch(() => {
+      if (typeof renderHandoffs === 'function') renderHandoffs();
+    });
+  }
+
+  // Lazy: re-render conversations with fresh API data
+  if (target === 'conversations' && typeof window.renderConversations === 'function') {
+    window.renderConversations();
+    // If a conversation detail was open, refresh its messages too
+    if (typeof window.__refreshCurrentConversation === 'function') {
+      setTimeout(window.__refreshCurrentConversation, 200);
+    }
+  }
+
+  // Lazy: re-render dashboard from last cached data
+  if (target === 'dashboard' && typeof renderDashboard === 'function') {
+    if (window.analyticsData) renderDashboard(window.analyticsData);
+  }
+
+  // Lazy: refresh knowledge base with fresh data
+  if (target === 'knowledge' && typeof window.__refreshKnowledgeBase === 'function') {
+    window.__refreshKnowledgeBase();
+  }
+
+  // Lazy: request fresh config
+  if (target === 'config' || target === 'ai') {
+    socket.emit('config:get');
   }
 }
 
@@ -79,27 +108,9 @@ tabItems.forEach((btn) => {
   btn.addEventListener('click', () => navigateTo(btn.dataset.view));
 });
 
-// ---- 2b. Theme toggle -------------------------------------------------
-(function initTheme() {
-  const toggle = $('#theme-toggle');
-  if (!toggle) return;
-
-  // Load saved theme or default to dark
-  const saved = localStorage.getItem('waha-theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-  // Theme toggle SVG — sun (light) ↔ moon (dark)
-  const sunSvg = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
-  const moonSvg = '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-  toggle.innerHTML = saved === 'dark' ? sunSvg : moonSvg;
-
-  toggle.addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    const next = current === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('waha-theme', next);
-    toggle.innerHTML = next === 'dark' ? sunSvg : moonSvg;
-  });
-})();
+// ---- 2b. Force dark mode (light mode removed) -------------------------
+document.documentElement.setAttribute('data-theme', 'dark');
+localStorage.setItem('sorc-theme', 'dark');
 
 // ---- 3. Socket event handlers ----------------------------------------
 
@@ -225,6 +236,12 @@ socket.on('handoff:list', (list) => {
     headerCount.textContent = pending.length + ' pending / ' + total + ' total';
   }
 
+  // Update dashboard handoff stat immediately (not just from analytics broadcast)
+  const dashHandoffs = $('#dash-handoffs');
+  if (dashHandoffs) {
+    dashHandoffs.textContent = _handoffCount;
+  }
+
   // Re-render if view is active
   const handoffsActive = document.getElementById('view-handoffs')?.classList.contains('active');
   if (handoffsActive && typeof renderHandoffs === 'function') {
@@ -247,11 +264,29 @@ socket.on('handoff:list', (list) => {
   _prevHandoffCount = pending.length;
 });
 
-// ---- 4. On connect: request initial state ---------------------------
+// ---- 4. On (re)connect: request initial state & re-fetch everything --
 socket.on('connect', () => {
   _connected = true;
   hideReconnectingBanner();
   socket.emit('config:get');
+  // Re-fetch handoff list in case events were missed during disconnect
+  apiFetch('/api/handoffs').then(r => r.ok && r.json()).then(list => {
+    if (list) {
+      window._handoffList = list;
+      if (document.getElementById('view-handoffs')?.classList.contains('active') && typeof renderHandoffs === 'function') {
+        renderHandoffs();
+      }
+    }
+  }).catch(() => {});
+  // Re-fetch conversations list
+  if (typeof window.renderConversations === 'function') {
+    window.renderConversations();
+  }
+  // Re-fetch dashboard analytics
+  apiFetch('/api/router-health', { method: 'GET', signal: AbortSignal.timeout(4000) })
+    .then(r => r.json())
+    .then(d => typeof setRouterStatus === 'function' && setRouterStatus(d.connected))
+    .catch(() => typeof setRouterStatus === 'function' && setRouterStatus(false));
 });
 
 // ---- 5. Bot active toggle -------------------------------------------
@@ -305,11 +340,11 @@ function hideReconnectingBanner() {
   if (Notification.permission === 'granted') return;
   if (Notification.permission === 'denied') return;
 
-  const actions = document.querySelector('.statusbar-actions');
+  const actions = document.querySelector('.topbar-right');
   if (!actions) return;
 
   const btn = document.createElement('button');
-  btn.className = 'header-btn';
+  btn.className = 'topbar-btn';
   btn.title = 'Enable desktop notifications for handoffs';
   btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
   btn.addEventListener('click', () => {

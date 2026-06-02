@@ -3,6 +3,7 @@ const logger = require('./logger');
 const analytics = require('./analytics');
 const conversationState = require('./conversation-state');
 const knowledgeBase = require('./knowledge-base');
+const { EventEmitter } = require('events');
 
 // Lazy require — avoids circular dependency crash.
 // whatsapp.js requires BotEngine at module level, so requiring
@@ -32,8 +33,9 @@ const RAG_SYSTEM_PROMPT = `You are a strict customer service representative. You
 // ---------------------------------------------------------------------------
 // BotEngine — RAG message processing with rate limiting & human handoff
 // ---------------------------------------------------------------------------
-class BotEngine {
+class BotEngine extends EventEmitter {
   constructor() {
+    super();
     // Serial queue — processes one AI reply at a time
     this._queue = [];
     this._processing = false;
@@ -146,6 +148,9 @@ class BotEngine {
         if (reply.trim() === FALLBACK_PHRASE) {
           conversationState.requestHuman(phone);
           logger.bot('Human handoff triggered', { phone, body: reply });
+
+          // Notify dashboard in real-time
+          this.emit('handoff:triggered');
 
           // Send the fallback reply so the user knows they're being transferred
           try {

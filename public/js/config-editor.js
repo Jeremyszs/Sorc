@@ -76,13 +76,14 @@ $('#cfg-save').addEventListener('click', () => {
 
 // ---- Force logout (clear session) ----------------------------------------
 $('#cfg-force-logout')?.addEventListener('click', async () => {
-  if (!window.confirm('This will clear your WhatsApp session. You will need to scan the QR code again on the next message. Continue?')) return;
+  const ok = await showConfirm('Force Logout', 'This will clear your WhatsApp session. You will need to scan the QR code again on the next message. Continue?');
+  if (!ok) return;
   try {
-    const res = await fetch('/api/whatsapp/logout', { method: 'POST' });
+    const res = await apiFetch('/api/whatsapp/logout', { method: 'POST' });
     if (!res.ok) throw new Error('Logout failed');
-    alert('Session cleared. The bot will generate a new QR code on the next message.');
+    showToast('Session cleared. The bot will generate a new QR code on the next message.', 'success');
   } catch (err) {
-    alert('Failed to logout: ' + err.message);
+    showToast('Failed to logout: ' + err.message, 'error');
   }
 });
 
@@ -95,7 +96,7 @@ $('#ai-test-btn').addEventListener('click', async () => {
   el.textContent = 'Testing…';
   el.style.color = 'var(--text-tertiary)';
   try {
-    const res = await fetch('/api/router-health', { signal: AbortSignal.timeout(5000) });
+    const res = await apiFetch('/api/router-health', { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
     if (data.connected) {
       el.textContent = '✓ Connected (' + new Date().toLocaleTimeString() + ')';

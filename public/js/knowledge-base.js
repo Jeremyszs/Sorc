@@ -50,7 +50,7 @@
 
   async function loadEntries() {
     try {
-      const res = await fetch('/api/knowledge');
+      const res = await apiFetch('/api/knowledge');
       if (!res.ok) throw new Error('Failed to load');
       _entries = await res.json();
       renderEntries();
@@ -73,22 +73,20 @@
     for (const entry of _entries) {
       const card = document.createElement('div');
       card.className = 'kb-entry-card';
-      card.style.cssText =
-        'background:var(--surface);border:1px solid var(--glass-border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:8px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;';
 
       const info = document.createElement('div');
-      info.style.cssText = 'flex:1;min-width:0;';
+      info.className = 'kb-entry-info';
 
       const titleEl = document.createElement('div');
-      titleEl.style.cssText = 'font-weight:600;font-size:14px;color:var(--text-primary);';
+      titleEl.className = 'kb-entry-title';
       titleEl.textContent = entry.title || 'Untitled';
 
       const preview = document.createElement('div');
-      preview.style.cssText = 'font-size:12px;color:var(--text-secondary);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;';
+      preview.className = 'kb-entry-preview';
       preview.textContent = entry.content?.slice(0, 200) + (entry.content?.length > 200 ? '…' : '');
 
       const meta = document.createElement('div');
-      meta.style.cssText = 'font-size:10px;color:var(--text-tertiary);margin-top:4px;';
+      meta.className = 'kb-entry-meta';
       meta.textContent =
         (entry.content?.length || 0) + ' chars' +
         ' · created ' + new Date(entry.created_at).toLocaleDateString();
@@ -98,7 +96,7 @@
       info.appendChild(meta);
 
       const actions = document.createElement('div');
-      actions.style.cssText = 'display:flex;gap:6px;flex-shrink:0;align-items:center;';
+      actions.className = 'kb-entry-actions';
 
       const editBtn = document.createElement('button');
       editBtn.className = 'btn btn-secondary btn-sm';
@@ -107,13 +105,13 @@
 
       const delBtn = document.createElement('button');
       delBtn.className = 'btn btn-danger btn-sm';
-      delBtn.style.cssText = 'padding:4px 10px;font-size:11px;background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;';
       delBtn.textContent = '×';
       delBtn.title = 'Delete';
       delBtn.addEventListener('click', async () => {
-        if (!window.confirm('Delete "' + (entry.title || 'Untitled') + '"?')) return;
+        const ok = await showConfirm('Delete Entry', 'Delete "' + (entry.title || 'Untitled') + '"?');
+        if (!ok) return;
         try {
-          const res = await fetch('/api/knowledge/' + entry.id, { method: 'DELETE' });
+          const res = await apiFetch('/api/knowledge/' + entry.id, { method: 'DELETE' });
           if (!res.ok) throw new Error('Delete failed');
           await loadEntries();
         } catch (err) {
@@ -168,14 +166,14 @@
       let res;
       if (id) {
         // Update existing
-        res = await fetch('/api/knowledge/' + id, {
+        res = await apiFetch('/api/knowledge/' + id, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, content }),
         });
       } else {
         // Create new
-        res = await fetch('/api/knowledge', {
+        res = await apiFetch('/api/knowledge', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, content }),
@@ -202,9 +200,10 @@
 
   // Clear all
   clearAllBtn.addEventListener('click', async () => {
-    if (!window.confirm('Delete ALL knowledge entries?')) return;
+    const ok = await showConfirm('Delete All', 'Delete ALL knowledge entries?');
+    if (!ok) return;
     try {
-      const res = await fetch('/api/knowledge', { method: 'DELETE' });
+      const res = await apiFetch('/api/knowledge', { method: 'DELETE' });
       if (!res.ok) throw new Error('Clear failed');
       await loadEntries();
     } catch (err) {
@@ -225,7 +224,7 @@
       overlay.style.display = 'flex';
 
       try {
-        const res = await fetch('/api/knowledge/preview');
+        const res = await apiFetch('/api/knowledge/preview');
         if (!res.ok) throw new Error('Failed to load preview');
         const data = await res.json();
 
@@ -256,7 +255,7 @@
     });
   }
 
-  // Close on overlay click (outside the glass)
+  // Close on overlay click (outside the card)
   const overlayEl = document.getElementById('kb-preview-overlay');
   if (overlayEl) {
     overlayEl.addEventListener('click', (e) => {
@@ -275,4 +274,7 @@
 
   // Initial load
   loadEntries();
+
+  // Expose for navigation refresh
+  window.__refreshKnowledgeBase = loadEntries;
 })();

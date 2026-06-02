@@ -4,9 +4,14 @@
 
 let hourlyChartInstance = null;
 const CHART_COLORS = {
-  fill:   'rgba(0, 122, 255, 0.12)',
-  border: 'rgba(0, 122, 255, 0.85)',
+  fill:   'rgba(59, 130, 246, 0.10)',
+  border: 'rgba(59, 130, 246, 0.80)',
 };
+
+// Pick a readable grid color for the dark theme
+function chartGridColor() {
+  return 'rgba(255,255,255,0.08)';
+}
 
 /**
  * Update all dashboard elements in place from analytics data.
@@ -60,8 +65,8 @@ function renderChart(volume) {
       maintainAspectRatio: true,
       plugins: { legend: { display: false } },
       scales: {
-        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#8e8e93' }, grid: { color: 'rgba(142,142,147,0.12)' } },
-        x: { ticks: { maxRotation: 45, font: { size: 10 }, color: '#8e8e93' }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#9ca3af' }, grid: { color: chartGridColor() } },
+        x: { ticks: { maxRotation: 45, font: { size: 10 }, color: '#9ca3af' }, grid: { display: false } },
       },
     },
   });
@@ -70,7 +75,7 @@ function renderChart(volume) {
 // ---- 9router health check --------------------------------------------
 
 function checkRouterStatus() {
-  fetch('/api/router-health', {
+  apiFetch('/api/router-health', {
     method: 'GET',
     signal: AbortSignal.timeout(4000),
   })

@@ -129,6 +129,10 @@ class WhatsAppClient extends EventEmitter {
         });
       }
 
+      // Broadcast incoming message to dashboard so conversation list updates
+      // even when bot mode is off (human handoff active)
+      this.emit('message:received', { from: msg.from, body: msg.body });
+
       await BotEngine.process(msg);
     });
 

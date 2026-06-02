@@ -143,6 +143,33 @@ class ConversationState {
       ON CONFLICT(phone) DO UPDATE SET unread_count = 0, updated_at = ?
     `).run(phone, Date.now(), Date.now());
   }
+
+  /**
+   * Delete a conversation: removes both the conversation_state record and
+   * all associated messages from the database.
+   */
+  deleteConversation(phone) {
+    const likeJid = '%' + phone.replace(/[^0-9]/g, '') + '%';
+    const msgDeleted = db.prepare(
+      "DELETE FROM messages WHERE (from_number LIKE ? OR to_number LIKE ?)"
+    ).run(likeJid, likeJid).changes;
+    const stateDeleted = db.prepare(
+      "DELETE FROM conversation_state WHERE phone = ?"
+    ).run(phone).changes;
+    logger.bot('Conversation deleted', { phone, messagesRemoved: msgDeleted });
+    return { messagesRemoved: msgDeleted, stateRemoved: stateDeleted };
+  }
+
+  /**
+   * Delete just the handoff state for a phone (keeps messages).
+   */
+  deleteHandoff(phone) {
+    const stateDeleted = db.prepare(
+      "DELETE FROM conversation_state WHERE phone = ?"
+    ).run(phone).changes;
+    logger.bot('Handoff deleted', { phone });
+    return { stateRemoved: stateDeleted };
+  }
 }
 
 // ---------------------------------------------------------------------------

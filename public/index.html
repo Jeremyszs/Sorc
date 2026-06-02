@@ -4,323 +4,303 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Sorc — Customer Service AI</title>
-  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js" integrity="sha384-kzavj5fiMwLKzzD1f8S7TeoVIEi7uKHvbTA3ueZkrzYq75pNQUiUi6Dy98Q3fxb0" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     /* ====================================================================
-       CSS Reset & Variables — Professional SaaS Design System
+       Sorc Design System — Warm Dark / Compact
+       Palette: Anthropic Dark, Off-White, Crail Orange, Slate Blue, Green
        ==================================================================== */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      /* ---- Typography ---- */
-      --font: 'Inter', -apple-system, 'SF Pro Display', system-ui, sans-serif;
-      --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    * { scrollbar-width: thin; scrollbar-color: #2a2a27 transparent; }
+    *::-webkit-scrollbar { width: 4px; }
+    *::-webkit-scrollbar-track { background: transparent; }
+    *::-webkit-scrollbar-thumb { background: #2a2a27; border-radius: 2px; }
 
-      /* ---- Spacing scale (4px base) ---- */
-      --space-1: 4px;
-      --space-2: 8px;
-      --space-3: 12px;
-      --space-4: 16px;
-      --space-5: 20px;
-      --space-6: 24px;
-      --space-7: 28px;
-      --space-8: 32px;
-      --space-9: 36px;
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { appearance: textfield; }
+
+    :root {
+      --font-sans: 'Inter', -apple-system, system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+      /* Compact spacing (2px base) */
+      --space-1:  2px;
+      --space-2:  4px;
+      --space-3:  8px;
+      --space-4:  12px;
+      --space-5:  16px;
+      --space-6:  20px;
+      --space-7:  24px;
+      --space-8:  32px;
       --space-10: 40px;
       --space-12: 48px;
 
-      /* ---- Radii ---- */
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 16px;
-      --radius-xl: 24px;
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --radius-xl: 12px;
+      --radius-full: 9999px;
 
-      /* ---- Transitions ---- */
-      --transition-fast: 150ms cubic-bezier(0.2, 0, 0, 1);
-      --transition: 250ms cubic-bezier(0.2, 0, 0, 1);
-      --transition-slow: 400ms cubic-bezier(0.2, 0, 0, 1);
+      --transition-fast: 120ms ease;
+      --transition: 200ms ease;
+      --transition-slow: 350ms ease;
 
-      /* ---- Elevation ---- */
-      --shadow-xs: 0 1px 2px rgba(0,0,0,.06);
-      --shadow-sm: 0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
-      --shadow-md: 0 4px 12px rgba(0,0,0,.10);
-      --shadow-lg: 0 8px 30px rgba(0,0,0,.14);
-      --shadow-xl: 0 16px 48px rgba(0,0,0,.20);
+      /* ── Layout ─────────────────────────────────────────────────────── */
+      --sidebar-width: 200px;
+      --topbar-height: 38px;
+      --tab-height: 44px;
+      --status-pip-size: 6px;
 
-      /* ---- Light theme ---- */
-      --bg-gradient: linear-gradient(145deg, #f2f5fa 0%, #e6ecf4 100%);
-      --glass-bg: rgba(255,255,255,0.75);
-      --glass-border: rgba(255,255,255,0.50);
-      --glass-shadow: 0 4px 24px rgba(0,0,0,0.06);
-      --glass-blur: 20px;
+      /* ── Warm Dark Palette ──────────────────────────────────────────── */
+      --bg-primary: #141413;
+      --bg-surface: #1b1b19;
+      --bg-hover: #232320;
+      --bg-elevated: #20201d;
 
-      --surface: #ffffff;
-      --surface-hover: #f5f7fa;
-      --surface-secondary: rgba(0,0,0,0.04);
+      --border: #2a2a27;
+      --border-light: #353532;
 
-      --text-primary: #161618;
-      --text-secondary: #6b6b74;
-      --text-tertiary: #a0a0ab;
-      --text-inverse: #ffffff;
-      --text-link: #2463eb;
+      --text-primary: #faf9f5;
+      --text-secondary: #e8e6dc;
+      --text-tertiary: #b0aea5;
+      --text-inverse: #141413;
 
-      --accent: #2463eb;
-      --accent-hover: #1a54cc;
-      --accent-soft: rgba(36,99,235,0.10);
-      --accent-glow: rgba(36,99,235,0.22);
+      --accent: #d97757;
+      --accent-hover: #c15f3c;
+      --accent-soft: rgba(217,119,87,0.12);
+      --accent-light: rgba(217,119,87,0.06);
 
-      --green: #1a8d4a;
-      --green-soft: rgba(26,141,74,0.10);
-      --green-glow: rgba(26,141,74,0.20);
+      --blue: #6a9bcc;
+      --blue-soft: rgba(106,155,204,0.12);
+      --blue-light: rgba(106,155,204,0.06);
 
-      --orange: #d4760a;
-      --orange-soft: rgba(212,118,10,0.10);
+      --green: #788c5d;
+      --green-soft: rgba(120,140,93,0.14);
+      --green-dot: #788c5d;
 
-      --red: #d32f2f;
-      --red-soft: rgba(211,47,47,0.10);
-      --red-glow: rgba(211,47,47,0.18);
+      --red: #cc6b5a;
+      --red-soft: rgba(204,107,90,0.12);
 
-      --purple: #7c3aed;
-      --purple-soft: rgba(124,58,237,0.10);
+      --orange: #d97757;
+      --orange-soft: rgba(217,119,87,0.12);
 
-      --yellow: #ca8a04;
-      --yellow-soft: rgba(202,138,4,0.10);
+      --purple: #8a7fa0;
+      --purple-soft: rgba(138,127,160,0.12);
 
-      /* ---- Layout ---- */
-      --nav-bg: rgba(255,255,255,0.70);
-      --nav-border: rgba(0,0,0,0.06);
-      --sidebar-width: 240px;
-      --statusbar-height: 40px;
-      --tab-height: 54px;
-      --header-height: 56px;
+      --yellow: #c4a35a;
+      --yellow-soft: rgba(196,163,90,0.12);
+
+      --card-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
 
-    [data-theme="dark"] {
-      --bg-gradient: linear-gradient(145deg, #131316 0%, #1a1a20 50%, #111122 100%);
-      --glass-bg: rgba(35,35,42,0.78);
-      --glass-border: rgba(255,255,255,0.06);
-      --glass-shadow: 0 4px 24px rgba(0,0,0,0.30);
-      --glass-blur: 24px;
+    html, body { height: 100%; overflow: hidden; background: var(--bg-primary); }
 
-      --surface: #26262e;
-      --surface-hover: #2e2e38;
-      --surface-secondary: rgba(255,255,255,0.04);
-
-      --text-primary: #efeff1;
-      --text-secondary: #96969f;
-      --text-tertiary: #5e5e68;
-      --text-inverse: #000000;
-      --text-link: #5692f0;
-
-      --accent: #5692f0;
-      --accent-hover: #6ba3ff;
-      --accent-soft: rgba(86,146,240,0.14);
-      --accent-glow: rgba(86,146,240,0.25);
-
-      --green: #34d399;
-      --green-soft: rgba(52,211,153,0.12);
-      --green-glow: rgba(52,211,153,0.22);
-
-      --orange: #fb923c;
-      --orange-soft: rgba(251,146,60,0.12);
-
-      --red: #f87171;
-      --red-soft: rgba(248,113,113,0.12);
-      --red-glow: rgba(248,113,113,0.20);
-
-      --purple: #a78bfa;
-      --purple-soft: rgba(167,139,250,0.12);
-
-      --yellow: #fbbf24;
-      --yellow-soft: rgba(251,191,36,0.12);
-
-      --nav-bg: rgba(22,22,28,0.78);
-      --nav-border: rgba(255,255,255,0.06);
+    body {
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.4;
+      font-size: 13px;
     }
 
-    html, body { height: 100%; overflow: hidden; }
-
-    /* ── Hide scrollbar on all elements (keep scroll functionality) ──── */
-    * {
-      scrollbar-width: none; /* Firefox */
-      -ms-overflow-style: none; /* IE/Edge */
-    }
-    *::-webkit-scrollbar {
-      display: none; /* Chrome/Safari/Opera */
+    :focus-visible {
+      outline: 1.5px solid var(--accent);
+      outline-offset: 1px;
     }
 
-    /* ── Hide number input spinners ─────────────────────────────────── */
-    input[type="number"]::-webkit-inner-spin-button,
-    input[type="number"]::-webkit-outer-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-    input[type="number"] {
-      appearance: textfield;
-    }
-
+    /* ====================================================================
+       Dashboard Content
+       ==================================================================== */
     #dashboard-content {
       height: 100%;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-    }
-
-    body {
-      font-family: var(--font);
-      background: var(--bg-gradient);
-      color: var(--text-primary);
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      line-height: 1.45;
     }
 
     /* ====================================================================
-       Focus states (accessibility)
+       Top Bar — 38px, solid dark
        ==================================================================== */
-    :focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-    }
-    .btn:focus-visible, .nav-item:focus-visible, .tab-item:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: -1px;
-    }
-
-    /* ====================================================================
-       Status bar
-       ==================================================================== */
-    #statusbar {
+    #topbar {
       position: fixed;
       top: 0; left: 0; right: 0;
-      height: var(--statusbar-height);
-      background: var(--nav-bg);
-      backdrop-filter: blur(var(--glass-blur));
-      -webkit-backdrop-filter: blur(var(--glass-blur));
-      border-bottom: 1px solid var(--nav-border);
+      height: var(--topbar-height);
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      padding: 0 var(--space-5);
-      gap: var(--space-4);
+      padding: 0 var(--space-4);
+      gap: var(--space-3);
       z-index: 100;
     }
 
-    .status-pill {
+    .topbar-left {
+      flex-shrink: 0;
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 11.5px;
-      font-weight: 500;
-      color: var(--text-secondary);
+      gap: var(--space-2);
     }
 
-    .status-dot {
-      width: 7px; height: 7px;
+    #topbar-logo {
+      display: block;
+    }
+
+    #view-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      letter-spacing: -.01em;
+    }
+
+    .topbar-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-left: auto;
+    }
+
+    /* ── Status Pips ──────────────────────────────────────────────────── */
+    .status-pip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+    }
+    .status-pip .status-dot {
+      width: var(--status-pip-size);
+      height: var(--status-pip-size);
       border-radius: 50%;
       background: var(--red);
-      transition: background var(--transition-fast), box-shadow var(--transition-fast);
+      flex-shrink: 0;
+      transition: background var(--transition-fast);
     }
-    .status-dot.on  { background: var(--green); box-shadow: 0 0 8px var(--green-glow); }
-    .status-dot.off { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
-
-    .statusbar-actions {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 2px;
+    .status-pip .status-dot.on {
+      background: var(--green-dot);
+      box-shadow: 0 0 0 0 var(--green-soft);
+    }
+    .status-pip .status-dot.on.pulse {
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    .status-pip .status-dot.off {
+      background: var(--red);
+    }
+    .status-pip .pip-label {
+      font-size: 10px;
     }
 
-    .header-btn {
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 var(--green-soft); }
+      50% { box-shadow: 0 0 0 4px var(--green-soft); }
+    }
+
+    .topbar-divider {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .topbar-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 32px;
-      height: 32px;
-      border-radius: var(--radius-sm);
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-md);
       background: transparent;
       border: none;
       cursor: pointer;
-      color: var(--text-secondary);
+      color: var(--text-tertiary);
       transition: all var(--transition-fast);
     }
-    .header-btn:hover { background: var(--surface-secondary); color: var(--text-primary); }
-    .header-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+    .topbar-btn:hover { background: var(--accent-light); color: var(--accent); }
+    .topbar-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+
+    /* ── Bot toggle ────────────────────────────────────────────────────── */
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+    }
+    .toggle {
+      position: relative;
+      width: 32px; height: 17px;
+      background: var(--border-light);
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+      flex-shrink: 0;
+    }
+    .toggle.on { background: var(--green) !important; }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform var(--transition-fast);
+    }
+    .toggle.on::after { transform: translateX(15px); }
 
     /* ====================================================================
-       Layout
+       Layout — sidebar + main
        ==================================================================== */
     #app-layout {
       display: flex;
-      height: 100%;
-      padding-top: var(--statusbar-height);
+      flex: 1;
+      padding-top: var(--topbar-height);
+      overflow: hidden;
     }
 
-    /* ---- Sidebar ---- */
+    /* ── Sidebar — 200px ────────────────────────────────────────── */
     #sidebar {
       width: var(--sidebar-width);
-      background: var(--nav-bg);
-      backdrop-filter: blur(var(--glass-blur));
-      -webkit-backdrop-filter: blur(var(--glass-blur));
-      border-right: 1px solid var(--nav-border);
+      background: var(--bg-primary);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
-      padding: 0 0 var(--space-3);
-      z-index: 90;
       overflow-y: auto;
+      border-right: 1px solid var(--border);
     }
 
-    #sidebar .brand {
-      padding: var(--space-5) var(--space-5) var(--space-6);
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: -.03em;
-      color: var(--text-primary);
-      user-select: none;
-      border-bottom: 1px solid var(--nav-border);
-      margin-bottom: var(--space-2);
-    }
-    #sidebar .brand span { color: var(--accent); }
-    #sidebar .brand .version {
-      display: block;
-      font-size: 10px;
-      font-weight: 500;
-      color: var(--text-tertiary);
-      letter-spacing: .04em;
-      margin-top: 2px;
-      text-transform: uppercase;
-    }
 
     #sidebar nav {
       flex: 1;
       display: flex;
       flex-direction: column;
       gap: 1px;
-      padding: 0 var(--space-2);
-    }
-
-    /* ---- Sidebar section label ---- */
-    .nav-section {
-      padding: var(--space-3) var(--space-3) var(--space-1);
-      font-size: 9.5px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      color: var(--text-tertiary);
+      padding: var(--space-2);
     }
 
     .nav-item {
       display: flex;
       align-items: center;
-      gap: var(--space-3);
-      padding: 9px 12px;
+      gap: var(--space-2);
+      padding: 6px var(--space-3);
       border-radius: var(--radius-md);
-      color: var(--text-secondary);
-      font-size: 13px;
+      color: var(--text-tertiary);
+      font-size: 12px;
       font-weight: 500;
+      font-family: var(--font-sans);
       cursor: pointer;
       transition: all var(--transition-fast);
       border: none;
@@ -330,16 +310,16 @@
       position: relative;
     }
     .nav-item:hover {
-      background: var(--surface-secondary);
-      color: var(--text-primary);
+      background: var(--blue-light);
+      color: var(--blue);
     }
     .nav-item.active {
-      background: var(--accent-soft);
-      color: var(--accent);
+      color: var(--blue);
       font-weight: 600;
+      background: var(--blue-soft);
     }
     .nav-item svg {
-      width: 20px; height: 20px;
+      width: 16px; height: 16px;
       flex-shrink: 0;
       stroke: currentColor;
       fill: none;
@@ -349,31 +329,29 @@
       margin-left: auto;
       background: var(--red);
       color: #fff;
-      font-size: 9.5px;
+      font-size: 8px;
       font-weight: 700;
-      padding: 0 6px;
-      border-radius: 8px;
-      line-height: 16px;
-      min-width: 16px;
+      font-family: var(--font-mono);
+      padding: 0 5px;
+      border-radius: 7px;
+      line-height: 14px;
+      min-width: 14px;
       text-align: center;
     }
 
-    /* ---- Tab bar (mobile) ---- */
+    /* ── Mobile tab bar ─────────────────────────────────────────────────── */
     #tabbar {
       display: none;
       position: fixed;
       bottom: 0; left: 0; right: 0;
       height: var(--tab-height);
-      background: var(--nav-bg);
-      backdrop-filter: blur(var(--glass-blur));
-      -webkit-backdrop-filter: blur(var(--glass-blur));
-      border-top: 1px solid var(--nav-border);
+      background: var(--bg-primary);
+      border-top: 1px solid var(--border);
       z-index: 100;
       padding: 0 var(--space-1) env(safe-area-inset-bottom, 0);
       align-items: center;
       justify-content: space-around;
     }
-
     .tab-item {
       display: flex;
       flex-direction: column;
@@ -386,212 +364,163 @@
       border: none;
       cursor: pointer;
       color: var(--text-tertiary);
-      font-size: 9.5px;
+      font-size: 8px;
       font-weight: 500;
+      font-family: var(--font-sans);
       transition: color var(--transition-fast);
       position: relative;
       min-width: 0;
     }
     .tab-item svg {
-      width: 22px; height: 22px;
+      width: 17px; height: 17px;
       stroke: currentColor;
       fill: none;
       stroke-width: 1.6;
     }
-    .tab-item.active { color: var(--accent); }
+    .tab-item.active { color: var(--blue); }
     .tab-item .tab-badge {
       position: absolute;
-      top: 2px;
+      top: 1px;
       right: 50%;
-      transform: translateX(14px);
+      transform: translateX(12px);
       background: var(--red);
       color: #fff;
-      font-size: 8.5px;
+      font-size: 7px;
       font-weight: 700;
-      padding: 0 5px;
-      border-radius: 7px;
-      line-height: 14px;
-      min-width: 14px;
+      font-family: var(--font-mono);
+      padding: 0 4px;
+      border-radius: 6px;
+      line-height: 12px;
+      min-width: 12px;
       text-align: center;
     }
 
-    /* ---- Main area ---- */
+    /* ── Main content ───────────────────────────────────────────────────── */
     #main {
       flex: 1;
       display: flex;
       flex-direction: column;
       overflow: hidden;
       min-width: 0;
+      background: var(--bg-primary);
     }
 
-    #header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px var(--space-7);
-      flex-shrink: 0;
-      min-height: var(--header-height);
-    }
-    @media (min-width: 1400px) {
-      #header { padding: 14px var(--space-10); }
-    }
-    #header h1 {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -.02em;
-      color: var(--text-primary);
-    }
-
-    /* ---- Bot toggle ---- */
-    .toggle-wrap {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      font-size: 12.5px;
-      color: var(--text-secondary);
-    }
-    .toggle {
-      position: relative;
-      width: 44px; height: 24px;
-      background: #d1d1d6;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: background var(--transition-fast);
-      flex-shrink: 0;
-    }
-    [data-theme="dark"] .toggle { background: #3a3a3c; }
-    .toggle.on { background: var(--green) !important; }
-    .toggle::after {
-      content: '';
-      position: absolute;
-      top: 2px; left: 2px;
-      width: 20px; height: 20px;
-      border-radius: 50%;
-      background: #fff;
-      transition: transform var(--transition-fast);
-      box-shadow: 0 1px 3px rgba(0,0,0,.15);
-    }
-    .toggle.on::after { transform: translateX(20px); }
-
-    /* ====================================================================
-       Content area — scroll
-       ==================================================================== */
     #content {
       flex: 1;
       overflow-y: auto;
-      padding: 0 var(--space-6) var(--space-6);
+      padding: var(--space-4) var(--space-5) var(--space-5);
       scroll-behavior: smooth;
     }
-    /* Constrain + center views on wide screens */
+
     #content > .view {
-      max-width: 960px;
+      max-width: 800px;
       margin-inline: auto;
     }
     #content > #view-logs {
       max-width: 100%;
     }
 
-    /* Views are flex columns so children get consistent spacing */
     .view {
       display: none;
       flex-direction: column;
-      gap: 20px;
+      gap: var(--space-3);
     }
     .view.active { display: flex; }
 
     /* ====================================================================
-       Glass card
+       Card System — warm dark surfaces
        ==================================================================== */
-    .glass {
-      background: var(--glass-bg);
-      backdrop-filter: blur(var(--glass-blur));
-      -webkit-backdrop-filter: blur(var(--glass-blur));
-      border: 1px solid var(--glass-border);
+    .swiss-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      box-shadow: var(--glass-shadow);
     }
 
-    .glass-header {
-      padding: var(--space-4) var(--space-5);
-      border-bottom: 1px solid var(--glass-border);
-      font-weight: 600;
-      font-size: 13.5px;
-      color: var(--text-secondary);
-      letter-spacing: -.01em;
+    .swiss-card-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: -.01em;
     }
-    .glass-header svg {
-      width: 18px; height: 18px;
+    .swiss-card-header svg {
+      width: 14px; height: 14px;
       stroke: currentColor;
       fill: none;
       stroke-width: 1.8;
       flex-shrink: 0;
     }
-
-    .glass-body {
-      padding: var(--space-5);
+    .swiss-card-body {
+      padding: var(--space-4);
       color: var(--text-primary);
     }
 
     /* ====================================================================
-       Stat tiles — premium analytics cards
+       Stat Grid — compact
        ==================================================================== */
-    .stat-grid {
+    .bento-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: var(--space-4);
-      margin-bottom: var(--space-6);
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: var(--space-3);
     }
 
-    .stat-tile {
-      background: var(--glass-bg);
-      backdrop-filter: blur(var(--glass-blur));
-      -webkit-backdrop-filter: blur(var(--glass-blur));
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius-md);
-      padding: var(--space-5);
-      box-shadow: var(--glass-shadow);
-      transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    .bento-stat {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-3) var(--space-4);
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
     }
-    .stat-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-    .stat-tile .icon {
-      width: 36px; height: 36px;
+
+    .bento-stat .stat-icon {
+      width: 28px;
+      height: 28px;
       border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: var(--space-3);
+      flex-shrink: 0;
     }
-    .stat-tile .icon svg {
-      width: 20px; height: 20px;
+    .bento-stat .stat-icon svg {
+      width: 15px; height: 15px;
       stroke: currentColor;
       fill: none;
       stroke-width: 1.8;
     }
-    .stat-tile .icon.blue  { background: var(--accent-soft); color: var(--accent); }
-    .stat-tile .icon.green { background: var(--green-soft); color: var(--green); }
-    .stat-tile .icon.orange { background: var(--orange-soft); color: var(--orange); }
-    .stat-tile .icon.purple { background: var(--purple-soft); color: var(--purple); }
+    .bento-stat .stat-icon.accent  { background: var(--accent-soft); color: var(--accent); }
+    .bento-stat .stat-icon.green   { background: var(--green-soft); color: var(--green); }
+    .bento-stat .stat-icon.orange  { background: var(--orange-soft); color: var(--orange); }
+    .bento-stat .stat-icon.purple  { background: var(--purple-soft); color: var(--purple); }
 
-    .stat-tile .label {
-      font-size: 11px;
+    .bento-stat .stat-content { flex: 1; min-width: 0; }
+
+    .bento-stat .stat-label {
+      font-size: 10px;
       font-weight: 500;
       color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: .03em;
     }
-    .stat-tile .value {
-      font-size: 26px;
+    .bento-stat .stat-value {
+      font-family: var(--font-sans);
+      font-size: 22px;
       font-weight: 700;
       color: var(--text-primary);
-      letter-spacing: -.03em;
-      line-height: 1.15;
-      margin-top: 2px;
+      letter-spacing: -.02em;
+      line-height: 1.1;
+      margin-top: 1px;
     }
-    .stat-tile .sub {
-      font-size: 11px;
-      color: var(--text-secondary);
-      margin-top: 2px;
+    .bento-stat .stat-meta {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 500;
+      color: var(--text-tertiary);
     }
 
     /* ====================================================================
@@ -599,77 +528,444 @@
        ==================================================================== */
     .chart-wrap {
       max-width: 100%;
-      padding: var(--space-2) 0;
     }
 
     /* ====================================================================
-       QR container
+       Conversations
        ==================================================================== */
-    #qr-container {
-      text-align: center;
-      padding: var(--space-6);
+    .conv-card {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 8px var(--space-3);
+      margin-bottom: 2px;
+      cursor: pointer;
+      display: flex;
+      gap: var(--space-3);
+      align-items: flex-start;
+      transition: background var(--transition-fast), border-color var(--transition-fast);
     }
-    #qr-container img { max-width: 200px; border-radius: var(--radius-sm); }
-    #qr-container .hint {
+    .conv-card:hover {
+      background: var(--bg-hover);
+      border-color: var(--border);
+    }
+    .conv-card.selected {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .conv-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
       font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .conv-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .conv-row1 {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .conv-name {
+      font-weight: 600;
+      font-size: 12.5px;
+      color: var(--text-primary);
+    }
+
+    .conv-time {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--text-tertiary);
+      white-space: nowrap;
+      margin-left: 6px;
+    }
+
+    .conv-preview {
+      font-size: 11px;
       color: var(--text-secondary);
-      margin-top: var(--space-2);
+      margin-top: 1px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .conv-row2 {
+      display: flex;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .conv-tag {
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-weight: 500;
+      display: inline-block;
+    }
+    .conv-tag.human  { background: var(--red-soft); color: var(--red); }
+    .conv-tag.paused { background: var(--orange-soft); color: var(--orange); }
+
+    .conv-badge {
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      margin-left: auto;
+      font-family: var(--font-mono);
+    }
+
+    /* ── Chat message area ──────────────────────────────────────────────── */
+    #conv-messages {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      max-height: 55vh;
+      overflow-y: auto;
+      min-height: 200px;
+    }
+
+    .conv-bubble {
+      max-width: 80%;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      word-wrap: break-word;
+      position: relative;
+    }
+    .conv-bubble.received {
+      align-self: flex-start;
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 12px 12px 12px 3px;
+    }
+    .conv-bubble.sent {
+      align-self: flex-end;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 12px 12px 3px 12px;
+    }
+    .conv-bubble .meta {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      margin-top: 3px;
+      opacity: 0.55;
+    }
+    .conv-bubble.received .meta { text-align: left; color: var(--text-tertiary); }
+    .conv-bubble.sent .meta { text-align: right; }
+
+    .conv-reply-bar {
+      padding: var(--space-2) var(--space-4);
+      display: flex;
+      gap: var(--space-2);
+      align-items: flex-end;
+      border-top: 1px solid var(--border);
+    }
+    .conv-reply-bar textarea {
+      flex: 1;
+      padding: 7px 10px;
+      font-size: 12.5px;
+      font-family: var(--font-sans);
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      outline: none;
+      resize: none;
+      min-height: 32px;
+      transition: border-color var(--transition-fast);
+    }
+    .conv-reply-bar textarea:focus {
+      border-color: var(--accent);
     }
 
     /* ====================================================================
-       Forms — professional, clean
+       Handoff cards
+       ==================================================================== */
+    .handoff-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      margin-bottom: var(--space-2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+    .handoff-card.needs-human {
+      border-left: 2px solid var(--red);
+      background: var(--red-soft);
+    }
+    .handoff-card .info { flex: 1; min-width: 0; }
+    .handoff-card .info .phone { font-weight: 600; font-size: 12.5px; font-family: var(--font-mono); }
+    .handoff-card .info .status { font-size: 11px; margin-top: 1px; }
+    .handoff-card .info .status .tag {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-size: 9px;
+      font-weight: 600;
+    }
+    .tag-bot { background: var(--green-soft); color: var(--green); }
+    .tag-human { background: var(--red-soft); color: var(--red); }
+    .handoff-time {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-tertiary);
+      margin-left: 6px;
+    }
+    .handoff-actions {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    /* ====================================================================
+       Knowledge base
+       ==================================================================== */
+    #kb-stats {
+      display: flex;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-3);
+    }
+    #kb-stats .kb-stat {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    #kb-stats .kb-stat strong {
+      font-size: 18px;
+      color: var(--text-primary);
+      display: block;
+      font-weight: 700;
+    }
+
+    .kb-entry-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px var(--space-3);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+
+    .kb-entry-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .kb-entry-title {
+      font-weight: 600;
+      font-size: 12.5px;
+      color: var(--text-primary);
+    }
+    .kb-entry-preview {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .kb-entry-meta {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+    .kb-entry-actions {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    /* ====================================================================
+       Logs
+       ==================================================================== */
+    #log-list {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      line-height: 1.6;
+      padding: 4px var(--space-4);
+    }
+    .log-line {
+      padding: 2px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 5px;
+      align-items: baseline;
+    }
+    .log-badge {
+      display: inline-block;
+      font-size: 7.5px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      padding: 0 4px;
+      border-radius: 2px;
+      letter-spacing: .03em;
+      flex-shrink: 0;
+      min-width: 28px;
+      text-align: center;
+    }
+    .log-badge.info    { background: var(--accent-soft); color: var(--accent); }
+    .log-badge.warn    { background: var(--orange-soft); color: var(--orange); }
+    .log-badge.error   { background: var(--red-soft); color: var(--red); }
+    .log-badge.debug   { background: var(--accent-light); color: var(--text-tertiary); }
+    .log-badge.bot     { background: var(--green-soft); color: var(--green); }
+    .log-time { color: var(--text-tertiary); flex-shrink: 0; font-size: 9px; }
+    .log-msg { color: var(--text-primary); word-break: break-word; font-size: 10px; }
+    .log-meta-toggle { cursor: pointer; color: var(--text-tertiary); font-size: 9px; margin-left: 3px; }
+    .log-meta-toggle:hover { color: var(--text-primary); }
+    .log-meta-json {
+      display: none;
+      font-size: 9px;
+      color: var(--text-secondary);
+      background: var(--bg-hover);
+      padding: 4px 6px;
+      border-radius: 2px;
+      margin-top: 1px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log-meta-json.open { display: block; }
+
+    .log-filter-bar {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+    }
+    .log-filter-btn {
+      padding: 2px 10px;
+      font-size: 9px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      background: transparent;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .log-filter-btn:hover {
+      border-color: var(--text-secondary);
+      color: var(--text-secondary);
+    }
+    .log-filter-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    /* ====================================================================
+       Forms
        ==================================================================== */
     .form-group {
-      margin-bottom: var(--space-4);
+      margin-bottom: var(--space-3);
     }
     .form-group label {
       display: block;
-      font-size: 12.5px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--text-secondary);
-      margin-bottom: 5px;
+      margin-bottom: 4px;
     }
     .form-group input,
     .form-group textarea,
     .form-group select {
       width: 100%;
-      padding: 9px 13px;
-      font-size: 14px;
-      font-family: var(--font);
-      background: var(--surface);
+      padding: 7px 10px;
+      font-size: 12.5px;
+      font-family: var(--font-sans);
+      background: var(--bg-hover);
       color: var(--text-primary);
-      border: 1.5px solid var(--glass-border);
-      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
       outline: none;
-      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+      transition: border-color var(--transition-fast);
     }
     .form-group input:hover,
     .form-group textarea:hover,
-    .form-group select:hover { border-color: var(--text-tertiary); }
+    .form-group select:hover { border-color: var(--border-light); }
     .form-group input:focus,
     .form-group textarea:focus,
     .form-group select:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-soft);
     }
-    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-group textarea { resize: vertical; min-height: 60px; }
     .form-group .hint {
-      font-size: 11.5px;
+      font-size: 10px;
       color: var(--text-tertiary);
-      margin-top: 4px;
+      margin-top: 3px;
     }
-
-    /* ---- Checkbox toggle variant ---- */
     .form-check {
       display: flex;
       align-items: center;
       gap: var(--space-2);
-      margin-bottom: var(--space-3);
+      margin-bottom: var(--space-2);
     }
-    .form-check label { margin: 0; cursor: pointer; }
-    .form-check input[type="checkbox"] {
-      width: auto;
+    .form-check label {
+      margin: 0;
       cursor: pointer;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+
+    /* ── Custom checkbox (circular toggle, 0.75x scale) ─────────────── */
+    .form-check input[type="checkbox"],
+    .conv-card input[type="checkbox"],
+    .handoff-card input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border: 1.5px solid var(--border-light);
+      border-radius: 50%;
+      background: var(--bg-hover);
+      cursor: pointer;
+      flex-shrink: 0;
+      margin: 0;
+      position: relative;
+      transition: all var(--transition-fast);
+    }
+    .form-check input[type="checkbox"]:hover,
+    .conv-card input[type="checkbox"]:hover,
+    .handoff-card input[type="checkbox"]:hover {
+      border-color: var(--accent);
+    }
+    .form-check input[type="checkbox"]:checked,
+    .conv-card input[type="checkbox"]:checked,
+    .handoff-card input[type="checkbox"]:checked {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+    .form-check input[type="checkbox"]:focus-visible,
+    .conv-card input[type="checkbox"]:focus-visible,
+    .handoff-card input[type="checkbox"]:focus-visible {
+      outline: 1.5px solid var(--accent);
+      outline-offset: 2px;
     }
 
     /* ====================================================================
@@ -679,13 +975,13 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 9px 20px;
-      font-size: 13px;
+      gap: 4px;
+      padding: 6px 14px;
+      font-size: 11.5px;
       font-weight: 600;
-      font-family: var(--font);
+      font-family: var(--font-sans);
       border: none;
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius-md);
       cursor: pointer;
       transition: all var(--transition-fast);
       user-select: none;
@@ -694,43 +990,40 @@
     .btn:active { transform: scale(0.97); }
     .btn-primary {
       background: var(--accent);
-      color: var(--text-inverse);
-      box-shadow: 0 2px 10px var(--accent-glow);
+      color: #fff;
     }
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-secondary {
-      background: var(--surface);
+      background: var(--bg-hover);
       color: var(--text-primary);
-      border: 1px solid var(--glass-border);
+      border: 1px solid var(--border);
     }
-    .btn-secondary:hover { background: var(--surface-hover); }
+    .btn-secondary:hover { border-color: var(--text-tertiary); }
     .btn-danger  {
       background: var(--red);
       color: #fff;
-      box-shadow: 0 2px 10px var(--red-glow);
     }
     .btn-danger:hover { opacity: .9; }
     .btn-success {
       background: var(--green);
       color: #fff;
-      box-shadow: 0 2px 10px var(--green-glow);
     }
     .btn-success:hover { opacity: .9; }
-    .btn-sm { padding: 5px 12px; font-size: 11.5px; }
-    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .btn-sm { padding: 4px 10px; font-size: 10px; }
+    .btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
 
     .btn-row {
       display: flex;
       gap: var(--space-2);
-      margin-top: var(--space-4);
+      margin-top: var(--space-3);
       flex-wrap: wrap;
     }
 
     .form-message {
-      font-size: 12px;
+      font-size: 10.5px;
       margin-top: var(--space-2);
-      padding: 8px 12px;
-      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
       font-weight: 500;
     }
     .form-message.success { background: var(--green-soft); color: var(--green); }
@@ -738,176 +1031,41 @@
     .form-message.info    { background: var(--accent-soft); color: var(--accent); }
 
     /* ====================================================================
-       Handoff cards
-       ==================================================================== */
-    .handoff-card {
-      background: var(--surface);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius-sm);
-      padding: var(--space-4) var(--space-4);
-      margin-bottom: var(--space-2);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: all var(--transition-fast);
-    }
-    .handoff-card:hover { background: var(--surface-hover); }
-    .handoff-card.needs-human {
-      border-left: 3px solid var(--red);
-      background: var(--red-soft);
-    }
-    .handoff-card .info { flex: 1; min-width: 0; }
-    .handoff-card .info .phone { font-weight: 600; font-size: 14px; font-family: var(--mono); }
-    .handoff-card .info .status { font-size: 12px; margin-top: 2px; }
-    .handoff-card .info .status .tag {
-      display: inline-block;
-      padding: 1px 8px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: 600;
-    }
-    .tag-bot { background: var(--green-soft); color: var(--green); }
-    .tag-human { background: var(--red-soft); color: var(--red); }
-
-    /* ====================================================================
-       Knowledge base
-       ==================================================================== */
-    #kb-stats {
-      display: flex;
-      gap: var(--space-5);
-      flex-wrap: wrap;
-      margin-bottom: var(--space-4);
-    }
-    #kb-stats .kb-stat {
-      font-size: 13px;
-      color: var(--text-secondary);
-    }
-    #kb-stats .kb-stat strong {
-      font-size: 20px;
-      color: var(--text-primary);
-      display: block;
-      font-weight: 700;
-    }
-
-    /* ---- KB Entry cards ---- */
-    .kb-entry-card {
-      background: var(--surface);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius-sm);
-      padding: var(--space-4) var(--space-4);
-      margin-bottom: var(--space-2);
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: var(--space-3);
-      transition: border-color var(--transition-fast);
-    }
-    .kb-entry-card:hover { border-color: var(--text-tertiary); }
-
-    /* ====================================================================
-       Logs
-       ==================================================================== */
-    #log-list {
-      font-family: var(--mono);
-      font-size: 11.5px;
-      line-height: 1.7;
-    }
-    .log-line {
-      padding: 3px 0;
-      border-bottom: 1px solid var(--glass-border);
-      display: flex;
-      gap: 6px;
-      align-items: baseline;
-    }
-    .log-badge {
-      display: inline-block;
-      font-size: 8.5px;
-      font-weight: 700;
-      text-transform: uppercase;
-      padding: 1px 5px;
-      border-radius: 3px;
-      letter-spacing: .03em;
-      flex-shrink: 0;
-      min-width: 32px;
-      text-align: center;
-    }
-    .log-badge.info    { background: var(--accent-soft); color: var(--accent); }
-    .log-badge.warn    { background: var(--orange-soft); color: var(--orange); }
-    .log-badge.error   { background: var(--red-soft); color: var(--red); }
-    .log-badge.debug   { background: var(--surface-secondary); color: var(--text-tertiary); }
-    .log-badge.bot     { background: var(--green-soft); color: var(--green); }
-    .log-time { color: var(--text-tertiary); flex-shrink: 0; font-size: 10.5px; }
-    .log-msg { color: var(--text-primary); word-break: break-word; }
-    .log-meta { color: var(--text-tertiary); font-size: 11px; }
-    .log-meta-toggle { cursor: pointer; color: var(--text-tertiary); font-size: 10px; margin-left: 4px; }
-    .log-meta-toggle:hover { color: var(--text-primary); }
-    .log-meta-json {
-      display: none;
-      font-size: 10.5px;
-      color: var(--text-secondary);
-      background: var(--surface);
-      padding: 6px 8px;
-      border-radius: 3px;
-      margin-top: 2px;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-    .log-meta-json.open { display: block; }
-    .log-filter-btn {
-      padding: 3px 10px;
-      font-size: 10.5px;
-      font-weight: 600;
-      font-family: var(--font);
-      border: 1px solid var(--glass-border);
-      border-radius: 14px;
-      background: transparent;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: all var(--transition-fast);
-    }
-    .log-filter-btn:hover { background: var(--surface-secondary); }
-    .log-filter-btn.active {
-      background: var(--accent);
-      color: var(--text-inverse);
-      border-color: var(--accent);
-    }
-
-    /* ====================================================================
        Progress bar
        ==================================================================== */
     .progress-bar-track {
-      height: 6px;
-      background: var(--surface);
-      border-radius: 3px;
+      height: 3px;
+      background: var(--bg-hover);
+      border-radius: 2px;
       overflow: hidden;
     }
     .progress-bar-fill {
       height: 100%;
-      border-radius: 3px;
+      border-radius: 2px;
       transition: width .3s ease, background .3s ease;
     }
 
     /* ====================================================================
        Table
        ==================================================================== */
-    .glass table {
+    .swiss-card table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 12px;
     }
-    .glass th {
+    .swiss-card th {
       text-align: left;
-      padding: 10px 16px;
+      padding: 7px var(--space-4);
       color: var(--text-tertiary);
       font-weight: 500;
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: .04em;
-      border-bottom: 1px solid var(--glass-border);
+      border-bottom: 1px solid var(--border);
     }
-    .glass td {
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--glass-border);
+    .swiss-card td {
+      padding: 7px var(--space-4);
+      border-bottom: 1px solid var(--border);
     }
 
     /* ====================================================================
@@ -915,18 +1073,18 @@
        ==================================================================== */
     .empty-state {
       text-align: center;
-      padding: var(--space-10) var(--space-5);
+      padding: var(--space-6) var(--space-4);
       color: var(--text-tertiary);
     }
     .empty-state .empty-icon {
-      width: 48px; height: 48px;
-      margin: 0 auto var(--space-3);
-      opacity: .4;
+      width: 36px; height: 36px;
+      margin: 0 auto var(--space-2);
+      opacity: .3;
       stroke: currentColor;
       fill: none;
       stroke-width: 1.5;
     }
-    .empty-state p { font-size: 13px; }
+    .empty-state p { font-size: 11.5px; }
 
     /* ====================================================================
        QR Modal
@@ -934,727 +1092,835 @@
     #qr-modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 200;
-      animation: overlayIn .2s ease;
+      animation: overlayIn .12s ease;
     }
     @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
     #qr-modal-overlay .modal {
-      background: var(--glass-bg);
-      backdrop-filter: blur(var(--glass-blur));
-      -webkit-backdrop-filter: blur(var(--glass-blur));
-      border: 1px solid var(--glass-border);
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
       border-radius: var(--radius-xl);
-      padding: var(--space-8) var(--space-8);
+      padding: var(--space-6);
       text-align: center;
-      max-width: 340px;
-      box-shadow: var(--shadow-xl);
+      max-width: 280px;
     }
-    #qr-modal-overlay .modal img { max-width: 210px; border-radius: var(--radius-sm); }
+    #qr-modal-overlay .modal img { max-width: 180px; border-radius: var(--radius-sm); }
+    #qr-modal-overlay .modal .hint {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-tertiary);
+      margin-top: var(--space-2);
+    }
 
     /* ====================================================================
        Reconnecting banner
        ==================================================================== */
     #reconnect-banner {
       position: fixed;
-      top: var(--statusbar-height);
+      top: var(--topbar-height);
       left: 0; right: 0;
       z-index: 300;
       background: var(--red);
       color: #fff;
       text-align: center;
-      padding: 8px 16px;
-      font-size: 12px;
+      padding: 5px 12px;
+      font-size: 10.5px;
       font-weight: 600;
-      animation: bannerSlide .25s ease;
+      animation: bannerSlide .2s ease;
     }
     @keyframes bannerSlide { from { transform:translateY(-100%); } to { transform:translateY(0); } }
 
     /* ====================================================================
-       Rule cards (legacy — kept for backward compat)
-       ==================================================================== */
-    .rule-card {
-      background: var(--surface);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius-sm);
-      padding: var(--space-4) var(--space-4);
-      margin-bottom: var(--space-2);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .rule-card:hover { background: var(--surface-hover); }
-    .rule-card .info { flex: 1; min-width: 0; }
-    .rule-card .info .name { font-weight: 600; font-size: 14px; }
-    .rule-card .info .detail { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
-
-    /* ====================================================================
-       KB Preview Modal
-       ==================================================================== */
-    #kb-preview-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 9000;
-      background: rgba(0,0,0,0.45);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      align-items: center;
-      justify-content: center;
-    }
-    #kb-preview-content {
-      font-family: var(--mono);
-      font-size: 12px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      background: var(--surface);
-      padding: var(--space-4);
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--glass-border);
-      max-height: 50vh;
-      overflow-y: auto;
-      margin: 0;
-    }
-
-    /* ====================================================================
-       Skeleton loading animation
+       Skeleton loading
        ==================================================================== */
     @keyframes shimmer {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
     .skeleton {
-      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-secondary) 50%, var(--surface) 75%);
+      background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-hover) 50%, var(--bg-surface) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s ease-in-out infinite;
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius-md);
     }
-    .skeleton-text { height: 14px; width: 60%; margin-bottom: 8px; }
-    .skeleton-stat { height: 80px; width: 100%; }
+    .skeleton-text { height: 12px; width: 60%; margin-bottom: 6px; }
+    .skeleton-stat { height: 60px; width: 100%; }
 
     /* ====================================================================
-       Conversations — message bubbles
+       KB Preview Modal
        ==================================================================== */
-    .conv-card {
-      background: var(--surface);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius-sm);
-      padding: 12px 16px;
-      margin-bottom: 6px;
-      cursor: pointer;
+    #kb-preview-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    #kb-preview-content {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background: var(--bg-surface);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      max-height: 50vh;
+      overflow-y: auto;
+      margin: 0;
+    }
+
+    /* ====================================================================
+       Rule cards (legacy compat)
+       ==================================================================== */
+    .rule-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      margin-bottom: var(--space-2);
       display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      transition: border-color var(--transition-fast);
+      align-items: center;
+      justify-content: space-between;
     }
-    .conv-card:hover { border-color: var(--text-tertiary); }
-    .conv-card.selected { border-color: var(--accent); }
-    .conv-card.selected:hover { border-color: var(--accent); }
+    .rule-card .info { flex: 1; min-width: 0; }
+    .rule-card .info .name { font-weight: 600; font-size: 12.5px; }
+    .rule-card .info .detail { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
 
     /* ====================================================================
-       Responsive — adaptive across all screen widths
+       Login Overlay
+       ==================================================================== */
+    #login-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: var(--bg-primary);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ====================================================================
+       Confirm Modal — replaces window.confirm
+       ==================================================================== */
+    #confirm-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      animation: overlayIn .12s ease;
+    }
+    #confirm-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5) var(--space-6);
+      max-width: 340px;
+      width: 90%;
+      text-align: center;
+    }
+    #confirm-box .confirm-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--space-2);
+    }
+    #confirm-box .confirm-message {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+      margin-bottom: var(--space-5);
+    }
+    #confirm-box .confirm-actions {
+      display: flex;
+      gap: var(--space-3);
+      justify-content: center;
+    }
+    #confirm-box .confirm-actions .btn {
+      min-width: 80px;
+    }
+
+    /* ====================================================================
+       Responsive
        ==================================================================== */
 
-    /* 1024px+ — wide sidebar, full stat grid */
     @media (min-width: 1400px) {
-      #content > .view { max-width: 1100px; }
-      #content { padding: 0 var(--space-10) var(--space-10); }
-      :root { --sidebar-width: 260px; }
+      #content > .view { max-width: 900px; }
+      #content { padding: var(--space-5) var(--space-6); }
     }
 
     @media (min-width: 1800px) {
-      #content > .view { max-width: 1300px; }
+      #content > .view { max-width: 1100px; }
     }
 
-    /* Tablet + small desktop — tighter spacing */
     @media (max-width: 1024px) {
-      #content { padding: 0 var(--space-5) var(--space-5); }
-      #header { padding: 12px var(--space-5); }
-      .view { gap: 16px; }
-      .stat-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-3); }
+      #content { padding: var(--space-4); }
+      .view { gap: var(--space-3); }
+      .bento-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
     }
 
-    /* Mobile — switch to tab bar, single-column-ish */
     @media (max-width: 768px) {
       #sidebar { display: none; }
       #tabbar { display: flex; }
       #main { padding-bottom: var(--tab-height); }
-      #header { padding: var(--space-3) var(--space-4); }
-      #header h1 { font-size: 17px; }
-      #content { padding: 0 var(--space-4) var(--space-4); }
+      #content { padding: var(--space-3); }
       #content > .view { max-width: 100%; }
-      .view { gap: 14px; }
-      .stat-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
-      .stat-tile { padding: var(--space-4); }
-      .stat-tile .value { font-size: 22px; }
-      .stat-tile .icon { width: 30px; height: 30px; margin-bottom: var(--space-2); }
-      #sidebar .brand { display: none; }
-      .nav-section { display: none; }
-      .status-pill { font-size: 10.5px; }
-      #statusbar { padding: 0 var(--space-3); gap: var(--space-3); }
-      .toggle-wrap { gap: 6px; font-size: 11px; }
+      .view { gap: var(--space-2); }
+      .bento-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
+      .bento-stat { padding: var(--space-2) var(--space-3); }
+      .bento-stat .stat-value { font-size: 18px; }
+      .bento-stat .stat-icon { width: 24px; height: 24px; }
+      .bento-stat .stat-icon svg { width: 13px; height: 13px; }
+      .swiss-card-header { padding: var(--space-2) var(--space-3); }
+      .swiss-card-body { padding: var(--space-3); }
+      .topbar-left { width: auto; flex-shrink: 0; }
+      .pip-label { display: none; }
     }
 
-    /* Small phone */
     @media (max-width: 480px) {
-      :root { --statusbar-height: 36px; --tab-height: 48px; --header-height: 48px; }
-      #header { padding: 10px var(--space-3); }
-      #header h1 { font-size: 15px; }
-      #content { padding: 0 var(--space-3) var(--space-3); }
-      #content > .view { max-width: 100%; }
-      .view { gap: 12px; }
-      .stat-grid { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
-      .stat-tile { padding: var(--space-3); }
-      .stat-tile .value { font-size: 20px; }
-      .stat-tile .icon { width: 26px; height: 26px; margin-bottom: var(--space-1); }
-      .glass-header { padding: var(--space-3); font-size: 12.5px; }
-      .glass-body { padding: var(--space-3); }
-      .form-group { margin-bottom: var(--space-3); }
-      .btn { padding: 8px 16px; font-size: 12px; }
-      .btn-sm { padding: 4px 10px; font-size: 10.5px; }
-      .btn-row { gap: 6px; margin-top: var(--space-3); }
-      .status-pill { font-size: 9.5px; }
-      #statusbar { padding: 0 var(--space-2); gap: var(--space-2); }
-      #statusbar { height: 36px; }
-      .header-btn { width: 28px; height: 28px; }
-      .header-btn svg { width: 16px; height: 16px; }
+      :root { --topbar-height: 36px; --tab-height: 42px; }
+      #content { padding: var(--space-2); }
+      .view { gap: var(--space-2); }
+      .bento-grid { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+      .bento-stat { padding: var(--space-2); }
+      .bento-stat .stat-value { font-size: 16px; }
+      .bento-stat .stat-meta { font-size: 8px; }
+      .bento-stat .stat-icon { width: 22px; height: 22px; }
+      .bento-stat .stat-icon svg { width: 12px; height: 12px; }
+      #topbar-logo { height: 18px; }
+      #topbar { padding: 0 var(--space-2); gap: var(--space-1); }
+      .topbar-btn { width: 24px; height: 24px; }
+      .topbar-btn svg { width: 13px; height: 13px; }
+      .toggle-wrap { gap: 3px; }
+      .toggle { width: 28px; height: 15px; }
+      .toggle::after { width: 11px; height: 11px; }
+      .toggle.on::after { transform: translateX(13px); }
     }
   </style>
 </head>
 <body>
 
   <!-- ==================================================================
-       Login Overlay
-       ================================================================== -->
-  <div id="login-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg-gradient);align-items:center;justify-content:center;">
-    <div class="glass" style="max-width:380px;width:90%;text-align:center;">
-      <div class="glass-header" style="font-size:20px;font-weight:700;justify-content:center;gap:10px;border:none;padding:24px 20px 0;">
-        <svg viewBox="0 0 24 24" style="width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:1.8;">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
+     Login Overlay
+     ================================================================== -->
+  <div id="login-overlay">
+    <div class="swiss-card" style="max-width:340px;width:90%;text-align:center;">
+      <div class="swiss-card-header" style="font-size:16px;font-weight:700;justify-content:center;gap:8px;border:none;padding:24px 20px 0;">
+        <span style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;background:var(--accent);border-radius:4px;color:#fff;font-size:11px;font-weight:800;">S</span>
         Sorc Dashboard
       </div>
-      <div class="glass-body">
-        <p style="color:var(--text-secondary);margin-bottom:20px;font-size:14px;">Enter the dashboard password to continue.</p>
+      <div class="swiss-card-body">
+        <p style="color:var(--text-secondary);margin-bottom:16px;font-size:12px;">Enter the dashboard password to continue.</p>
         <form id="login-form">
           <div class="form-group">
-            <input type="password" id="login-password" placeholder="Password" style="width:100%;text-align:center;font-size:18px;padding:12px;" autofocus />
+            <input type="password" id="login-password" placeholder="Password" style="text-align:center;font-size:16px;padding:10px;" autofocus />
           </div>
-          <div id="login-error" style="color:var(--red);font-size:13px;margin-bottom:12px;display:none;"></div>
-          <button type="submit" class="btn btn-primary" id="login-submit" style="width:100%;padding:14px;">Login</button>
-          <div id="login-loading" style="display:none;padding:14px;color:var(--text-tertiary);">Authenticating…</div>
+          <div id="login-error" style="color:var(--red);font-size:11px;margin-bottom:10px;display:none;"></div>
+          <button type="submit" class="btn btn-primary" id="login-submit" style="width:100%;padding:12px;">Login</button>
+          <div id="login-loading" style="display:none;padding:12px;color:var(--text-tertiary);font-size:12px;">Authenticating…</div>
         </form>
       </div>
     </div>
   </div>
 
   <!-- ==================================================================
-       Dashboard Content
-       ================================================================== -->
+     Dashboard Content
+     ================================================================== -->
   <div id="dashboard-content">
 
-  <!-- ==================================================================
-       Status Bar
-       ================================================================== -->
-  <div id="statusbar">
-    <div class="status-pill">
-      <span class="status-dot off" id="wa-dot"></span>
-      <span id="wa-label">WhatsApp — Disconnected</span>
-    </div>
-    <div class="status-pill">
-      <span class="status-dot off" id="ai-dot"></span>
-      <span id="ai-label">9router — Disconnected</span>
-    </div>
-    <div class="statusbar-actions">
-      <button id="logout-btn" class="header-btn" title="Logout">
-        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      </button>
-      <button id="theme-toggle" class="header-btn" title="Toggle theme">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      </button>
-    </div>
-  </div>
-
-  <!-- ==================================================================
-       App Layout
-       ================================================================== -->
-  <div id="app-layout">
-
-    <!-- ===== Sidebar ===== -->
-    <aside id="sidebar">
-      <div class="brand">
-        Sorc
-        <span class="version">Customer Service AI</span>
+    <!-- ===== Top Bar (38px) ===== -->
+    <div id="topbar">
+      <div class="topbar-left">
+        <img src="images/logo.png" alt="Sorc" id="topbar-logo" style="height:22px;width:auto;" />
+        <span id="view-title" style="display:none;"></span>
       </div>
-      <nav>
-        <button class="nav-item active" data-view="dashboard">
-          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-          Dashboard
-        </button>
-        <button class="nav-item" data-view="conversations" id="nav-conversations">
-          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Conversations
-        </button>
-        <button class="nav-item" data-view="handoffs" id="nav-handoffs">
-          <svg viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.33-.86.78-.97A3.996 3.996 0 0 0 22 10V3a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v7c0 1.68.98 3.13 2.4 3.8"/><path d="M20 3h3a1 1 0 0 1 1 1v6c0 2.21-1.79 4-4 4"/><path d="M4 7V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v3"/><path d="M9 21h-4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h4"/></svg>
-          Handoffs
-          <span class="nav-badge" id="handoff-nav-badge" style="display:none">0</span>
-        </button>
-        <div class="nav-section">Workspace</div>
-        <button class="nav-item" data-view="knowledge">
-          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          Knowledge Base
-        </button>
-        <button class="nav-item" data-view="config">
-          <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          Settings
-        </button>
-        <button class="nav-item" data-view="ai">
-          <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7.01 7.01 0 0 1 14 23h-4a7.01 7.01 0 0 1-6.73-5H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM9 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
-          AI Settings
-        </button>
-        <button class="nav-item" data-view="logs">
-          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          Live Logs
-        </button>
-      </nav>
-    </aside>
 
-    <!-- ==================================================================
-       Main content area
-       ================================================================== -->
-    <div id="main">
-      <div id="header">
-        <h1 id="view-title">Dashboard</h1>
+      <div class="topbar-center">
+        <div class="status-pip">
+          <span class="status-dot off" id="wa-dot"></span>
+          <span class="pip-label" id="wa-label">WhatsApp</span>
+        </div>
+        <div class="status-pip">
+          <span class="status-dot off" id="ai-dot"></span>
+          <span class="pip-label" id="ai-label">9router</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
         <div class="toggle-wrap">
           <span id="bot-toggle-label">Active</span>
           <div class="toggle on" id="bot-toggle" role="button" tabindex="0"></div>
         </div>
+
+        <span class="topbar-divider"></span>
+
+        <button id="logout-btn" class="topbar-btn" title="Logout">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
       </div>
+    </div>
 
-      <div id="content">
+    <!-- ===== App Layout ===== -->
+    <div id="app-layout">
 
-        <!-- ===== DASHBOARD ===== -->
-        <div id="view-dashboard" class="view active">
-          <div class="stat-grid">
-            <div class="stat-tile">
-              <div class="icon blue">
-                <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M22 6l-10 7L2 6"/></svg>
-              </div>
-              <div class="label">Messages Today</div>
-              <div class="value" id="dash-msgs-today">—</div>
-            </div>
-            <div class="stat-tile">
-              <div class="icon green">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              </div>
-              <div class="label">This Hour</div>
-              <div class="value" id="dash-msgs-hour">—</div>
-            </div>
-            <div class="stat-tile">
-              <div class="icon purple">
-                <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7.01 7.01 0 0 1 14 23h-4a7.01 7.01 0 0 1-6.73-5H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
-              </div>
-              <div class="label">AI Replies</div>
-              <div class="value" id="dash-ai-replies">—</div>
-            </div>
-            <div class="stat-tile">
-              <div class="icon orange">
-                <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-              </div>
-              <div class="label">Human Handoffs</div>
-              <div class="value" id="dash-handoffs">—</div>
-            </div>
-          </div>
+      <!-- ===== Sidebar (200px) ===== -->
+      <aside id="sidebar">
+        <nav style="padding-top: var(--space-3);">
+          <button class="nav-item active" data-view="dashboard">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+            Dashboard
+          </button>
+          <button class="nav-item" data-view="conversations" id="nav-conversations">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Conversations
+          </button>
+          <button class="nav-item" data-view="handoffs" id="nav-handoffs">
+            <svg viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.33-.86.78-.97A3.996 3.996 0 0 0 22 10V3a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v7c0 1.68.98 3.13 2.4 3.8"/><path d="M20 3h3a1 1 0 0 1 1 1v6c0 2.21-1.79 4-4 4"/><path d="M4 7V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v3"/><path d="M9 21h-4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h4"/></svg>
+            Handoffs
+            <span class="nav-badge" id="handoff-nav-badge" style="display:none">0</span>
+          </button>
 
-          <div id="qr-container" style="display:none">
-            <div class="glass">
-              <div class="glass-body">
-                <div style="font-weight:600;font-size:15px;margin-bottom:4px;">Scan QR Code</div>
-                <div id="qr-image"></div>
-                <div class="hint">WhatsApp &gt; Linked Devices &gt; Link a Device</div>
-              </div>
-            </div>
-          </div>
+          <button class="nav-item" data-view="knowledge">
+            <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Knowledge Base
+          </button>
+          <button class="nav-item" data-view="config">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            Bot Settings
+          </button>
+          <button class="nav-item" data-view="ai">
+            <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7.01 7.01 0 0 1 14 23h-4a7.01 7.01 0 0 1-6.73-5H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+            AI Settings
+          </button>
 
-          <!-- Chart card — gap from view flex, no inline margin -->
-          <div class="glass">
-            <div class="glass-header">
-              <svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-              Messages — Last 24 Hours
-            </div>
-            <div class="glass-body">
-              <div class="chart-wrap"><canvas id="hourlyChart"></canvas></div>
-            </div>
-          </div>
+          <button class="nav-item" data-view="logs">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Live Logs
+          </button>
+        </nav>
+      </aside>
 
-          <div class="glass">
-            <div class="glass-header">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              Knowledge Base Stats
-            </div>
-            <div class="glass-body">
-              <div id="dash-kb-stats" style="display:flex;gap:24px;">
-                <div><span style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;">Knowledge Entries</span><br/><span id="dash-kb-chunks" style="font-size:24px;font-weight:700;">—</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- ===== Main Content ===== -->
+      <div id="main">
+        <div id="content">
 
-        <!-- ===== BOT CONFIG ===== -->
-        <div id="view-config" class="view">
-          <div class="glass">
-            <div class="glass-header">
-              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-              Bot Configuration
-            </div>
-            <div class="glass-body">
-              <div class="form-group">
-                <label for="cfg-bot-name">Bot Name</label>
-                <input type="text" id="cfg-bot-name" />
-              </div>
-              <div class="form-group">
-                <label for="cfg-default-reply">Default Reply</label>
-                <textarea id="cfg-default-reply" rows="2"></textarea>
-                <div class="hint">Sent when no AI is available</div>
-              </div>
-              <div class="form-check">
-                <input type="checkbox" id="cfg-active" checked />
-                <label for="cfg-active">Bot Active</label>
-              </div>
-              <div class="form-check">
-                <input type="checkbox" id="cfg-keep-session" checked />
-                <label for="cfg-keep-session">Keep Login Session</label>
-                <span class="hint" style="display:inline;margin:0;">Off = re-scan QR on restart</span>
-              </div>
-              <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:4px;">
-                <button class="btn btn-danger btn-sm" id="cfg-force-logout">Force Logout & Clear Session</button>
-                <span class="hint" style="display:inline;margin:0;">Requires re-scan on next message</span>
-              </div>
-
-              <!-- Rate Limiting -->
-              <div style="margin:16px 0 8px;border-top:1px solid var(--glass-border);padding-top:14px;">
-                <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;">Rate Limiting</div>
-                <div class="form-group">
-                  <label for="cfg-rate-limit">Max Messages Per Minute (per phone)</label>
-                  <input type="number" id="cfg-rate-limit" min="1" max="200" placeholder="20" />
+          <!-- ===== DASHBOARD VIEW ===== -->
+          <div id="view-dashboard" class="view active">
+            <div class="bento-grid">
+              <div class="bento-stat">
+                <div class="stat-icon accent">
+                  <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M22 6l-10 7L2 6"/></svg>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-label">Messages Today</div>
+                  <div class="stat-value" id="dash-msgs-today">—</div>
+                  <div class="stat-meta">24h</div>
                 </div>
               </div>
+              <div class="bento-stat">
+                <div class="stat-icon green">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-label">This Hour</div>
+                  <div class="stat-value" id="dash-msgs-hour">—</div>
+                  <div class="stat-meta">current hour</div>
+                </div>
+              </div>
+              <div class="bento-stat">
+                <div class="stat-icon purple">
+                  <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7.01 7.01 0 0 1 14 23h-4a7.01 7.01 0 0 1-6.73-5H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-label">AI Replies</div>
+                  <div class="stat-value" id="dash-ai-replies">—</div>
+                  <div class="stat-meta">total</div>
+                </div>
+              </div>
+              <div class="bento-stat">
+                <div class="stat-icon orange">
+                  <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-label">Human Handoffs</div>
+                  <div class="stat-value" id="dash-handoffs">—</div>
+                  <div class="stat-meta">pending</div>
+                </div>
+              </div>
+            </div>
 
-              <!-- Conversation Timeout -->
-              <div style="margin:16px 0 8px;border-top:1px solid var(--glass-border);padding-top:14px;">
-                <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;">Conversation Timeout</div>
+            <!-- QR container -->
+            <div id="qr-container" style="display:none">
+              <div class="swiss-card">
+                <div class="swiss-card-body" style="text-align:center;">
+                  <div style="font-weight:600;font-size:13px;margin-bottom:3px;">Scan QR Code</div>
+                  <div id="qr-image"></div>
+                  <div class="hint">WhatsApp &gt; Linked Devices &gt; Link a Device</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chart card -->
+            <div class="swiss-card">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+                Messages — Last 24 Hours
+              </div>
+              <div class="swiss-card-body">
+                <div class="chart-wrap"><canvas id="hourlyChart"></canvas></div>
+              </div>
+            </div>
+
+            <!-- KB Stats card -->
+            <div class="swiss-card">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Knowledge Base
+              </div>
+              <div class="swiss-card-body">
+                <div id="dash-kb-stats" style="display:flex;gap:var(--space-4);">
+                  <div>
+                    <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;">Knowledge Entries</span>
+                    <br/>
+                    <span id="dash-kb-chunks" style="font-family:var(--font-sans);font-size:20px;font-weight:700;">—</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== BOT CONFIG VIEW ===== -->
+          <div id="view-config" class="view">
+            <div class="swiss-card">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                Bot Configuration
+              </div>
+              <div class="swiss-card-body">
+                <div class="form-group">
+                  <label for="cfg-bot-name">Bot Name</label>
+                  <input type="text" id="cfg-bot-name" />
+                </div>
+                <div class="form-group">
+                  <label for="cfg-default-reply">Default Reply</label>
+                  <textarea id="cfg-default-reply" rows="2"></textarea>
+                  <div class="hint">Sent when no AI is available</div>
+                </div>
                 <div class="form-check">
-                  <input type="checkbox" id="cfg-timeout-enabled" checked />
-                  <label for="cfg-timeout-enabled">Auto-reset stale handoffs</label>
+                  <input type="checkbox" id="cfg-active" checked />
+                  <label for="cfg-active">Bot Active</label>
+                </div>
+                <div class="form-check">
+                  <input type="checkbox" id="cfg-keep-session" checked />
+                  <label for="cfg-keep-session">Keep Login Session</label>
+                  <span class="hint" style="display:inline;margin:0;">Off = re-scan QR on restart</span>
+                </div>
+                <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+                  <button class="btn btn-danger btn-sm" id="cfg-force-logout">Force Logout & Clear Session</button>
+                  <span class="hint" style="display:inline;margin:0;">Requires re-scan on next message</span>
+                </div>
+
+                <!-- Rate Limiting -->
+                <div style="margin:var(--space-3) 0 var(--space-1);border-top:1px solid var(--border);padding-top:var(--space-3);">
+                  <div style="font-size:10px;font-weight:600;color:var(--text-tertiary);margin-bottom:var(--space-2);text-transform:uppercase;letter-spacing:.04em;">Rate Limiting</div>
+                  <div class="form-group">
+                    <label for="cfg-rate-limit">Max Messages Per Minute (per phone)</label>
+                    <input type="number" id="cfg-rate-limit" min="1" max="200" placeholder="20" />
+                  </div>
+                </div>
+
+                <!-- Conversation Timeout -->
+                <div style="margin:var(--space-3) 0 var(--space-1);border-top:1px solid var(--border);padding-top:var(--space-3);">
+                  <div style="font-size:10px;font-weight:600;color:var(--text-tertiary);margin-bottom:var(--space-2);text-transform:uppercase;letter-spacing:.04em;">Conversation Timeout</div>
+                  <div class="form-check">
+                    <input type="checkbox" id="cfg-timeout-enabled" checked />
+                    <label for="cfg-timeout-enabled">Auto-reset stale handoffs</label>
+                  </div>
+                  <div class="form-group">
+                    <label for="cfg-timeout-hours">Hours of inactivity before auto-reset</label>
+                    <input type="number" id="cfg-timeout-hours" min="1" max="720" placeholder="24" />
+                    <div class="hint">After this many hours with no messages, a handoff conversation returns to bot mode.</div>
+                  </div>
+                </div>
+
+                <div class="btn-row">
+                  <button class="btn btn-primary" id="cfg-save">Save Config</button>
+                </div>
+                <div id="cfg-message" class="form-message" style="display:none"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== AI SETTINGS VIEW ===== -->
+          <div id="view-ai" class="view">
+            <div class="swiss-card">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M5 12h14"/><path d="M12 5l14"/></svg>
+                9router Connection
+              </div>
+              <div class="swiss-card-body">
+                <div class="form-group">
+                  <label for="ai-endpoint">Endpoint URL</label>
+                  <input type="text" id="ai-endpoint" placeholder="http://localhost:20128/v1" />
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <button class="btn btn-secondary" id="ai-test-btn">Test Connection</button>
+                  <span id="ai-test-result" style="font-size:11px;"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="swiss-card">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7.01 7.01 0 0 1 14 23h-4a7.01 7.01 0 0 1-6.73-5H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+                Default Model
+              </div>
+              <div class="swiss-card-body">
+                <div class="form-group">
+                  <label for="ai-model">Model Name</label>
+                  <input type="text" id="ai-model" placeholder="auto" />
+                  <div class="hint"><code>auto</code> lets 9router decide. Use a combo name for specific routing.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="swiss-card">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                Global System Prompt
+              </div>
+              <div class="swiss-card-body">
+                <div class="form-group">
+                  <label for="ai-system-prompt">System Prompt</label>
+                  <textarea id="ai-system-prompt" rows="3"></textarea>
+                  <div style="font-size:10px;color:var(--text-tertiary);margin-top:3px;">
+                    Applied to ALL AI replies.
+                    <span id="ai-prompt-counter" style="float:right;font-family:var(--font-mono);font-size:9px;">0 chars</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="swiss-card">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                Model Parameters
+              </div>
+              <div class="swiss-card-body">
+                <div class="form-group">
+                  <label>Temperature <span id="ai-temp-display" style="font-weight:400;color:var(--text-tertiary);">0.7</span></label>
+                  <input type="range" id="ai-temperature" min="0" max="1" step="0.1" value="0.7"
+                    oninput="document.getElementById('ai-temp-display').textContent=this.value"
+                    style="width:100%;accent-color:var(--accent);" />
                 </div>
                 <div class="form-group">
-                  <label for="cfg-timeout-hours">Hours of inactivity before auto-reset</label>
-                  <input type="number" id="cfg-timeout-hours" min="1" max="720" placeholder="24" />
-                  <div class="hint">After this many hours with no messages, a handoff conversation returns to bot mode.</div>
-                </div>
-              </div>
-
-              <div class="btn-row">
-                <button class="btn btn-primary" id="cfg-save">Save Config</button>
-              </div>
-              <div id="cfg-message" class="form-message" style="display:none"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ===== AI SETTINGS ===== -->
-        <div id="view-ai" class="view">
-          <div class="glass">
-            <div class="glass-header">
-              <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5l14"/></svg>
-              9router Connection
-            </div>
-            <div class="glass-body">
-              <div class="form-group">
-                <label for="ai-endpoint">Endpoint URL</label>
-                <input type="text" id="ai-endpoint" placeholder="http://localhost:20128/v1" />
-              </div>
-              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-                <button class="btn btn-secondary" id="ai-test-btn">Test Connection</button>
-                <span id="ai-test-result" style="font-size:12.5px;"></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="glass">
-            <div class="glass-header">
-              <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7.01 7.01 0 0 1 14 23h-4a7.01 7.01 0 0 1-6.73-5H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
-              Default Model
-            </div>
-            <div class="glass-body">
-              <div class="form-group">
-                <label for="ai-model">Model Name</label>
-                <input type="text" id="ai-model" placeholder="auto" />
-                <div class="hint"><code>auto</code> lets 9router decide. Use a combo name for specific routing.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="glass">
-            <div class="glass-header">
-              <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-              Global System Prompt
-            </div>
-            <div class="glass-body">
-              <div class="form-group">
-                <label for="ai-system-prompt">System Prompt</label>
-                <textarea id="ai-system-prompt" rows="3"></textarea>
-                <div style="font-size:11.5px;color:var(--text-tertiary);margin-top:4px;">
-                  Applied to ALL AI replies.
-                  <span id="ai-prompt-counter" style="float:right;">0 chars</span>
+                  <label for="ai-max-tokens">Max Tokens</label>
+                  <input type="number" id="ai-max-tokens" min="100" max="4000" placeholder="500" />
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="glass">
-            <div class="glass-header">
-              <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-              Model Parameters
-            </div>
-            <div class="glass-body">
-              <div class="form-group">
-                <label>Temperature <span id="ai-temp-display" style="font-weight:400;color:var(--text-tertiary);">0.7</span></label>
-                <input type="range" id="ai-temperature" min="0" max="1" step="0.1" value="0.7"
-                  oninput="document.getElementById('ai-temp-display').textContent=this.value"
-                  style="width:100%;accent-color:var(--accent);" />
-              </div>
-              <div class="form-group">
-                <label for="ai-max-tokens">Max Tokens</label>
-                <input type="number" id="ai-max-tokens" min="100" max="4000" placeholder="500" />
-              </div>
-            </div>
-          </div>
-
-          <div class="glass">
-            <div class="glass-body">
-              <div class="btn-row">
-                <button class="btn btn-primary" id="ai-save">Save AI Settings</button>
-              </div>
-              <div id="ai-message" class="form-message" style="display:none"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ===== KNOWLEDGE BASE ===== -->
-        <div id="view-knowledge" class="view">
-          <div class="glass">
-            <div class="glass-header">
-              <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-              Knowledge Base
-              <span id="kb-stats-header" style="font-size:12px;font-weight:400;"></span>
-            </div>
-            <div class="glass-body">
-              <div id="kb-stats">
-                <div class="kb-stat">
-                  <strong id="kb-entries-count">0</strong>Entries
+            <div class="swiss-card">
+              <div class="swiss-card-body">
+                <div class="btn-row">
+                  <button class="btn btn-primary" id="ai-save">Save AI Settings</button>
                 </div>
-                <div class="kb-stat">
-                  <strong id="kb-chars">0</strong>Total Characters
+                <div id="ai-message" class="form-message" style="display:none"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== KNOWLEDGE BASE VIEW ===== -->
+          <div id="view-knowledge" class="view">
+            <div class="swiss-card">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                Knowledge Base
+                <span id="kb-stats-header" style="font-size:10px;font-weight:400;"></span>
+              </div>
+              <div class="swiss-card-body">
+                <div id="kb-stats">
+                  <div class="kb-stat">
+                    <strong id="kb-entries-count">0</strong>Entries
+                  </div>
+                  <div class="kb-stat">
+                    <strong id="kb-chars">0</strong>Total Characters
+                  </div>
+                </div>
+
+                <div class="btn-row" style="margin-bottom:12px;">
+                  <button class="btn btn-primary" id="kb-add">+ New Entry</button>
+                  <button class="btn btn-secondary" id="kb-preview">Preview Context</button>
+                  <button class="btn btn-danger btn-sm" id="kb-clear">Delete All</button>
+                </div>
+
+                <div id="kb-entry-list"></div>
+                <div id="kb-empty" class="empty-state">
+                  <svg class="empty-icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                  <p>No knowledge entries yet. Click "+ New Entry" to add your business FAQs.</p>
                 </div>
               </div>
+            </div>
 
-              <div class="btn-row" style="margin-bottom:16px;">
-                <button class="btn btn-primary" id="kb-add">+ New Entry</button>
-                <button class="btn btn-secondary" id="kb-preview">Preview Context</button>
-                <button class="btn btn-danger btn-sm" id="kb-clear">Delete All</button>
+            <div class="swiss-card" style="display:none" id="kb-editor-card">
+              <div class="swiss-card-header" id="kb-editor-title">
+                <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                New Knowledge Entry
               </div>
-
-              <div id="kb-entry-list"></div>
-              <div id="kb-empty" class="empty-state">
-                <svg class="empty-icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                <p>No knowledge entries yet. Click &quot;+ New Entry&quot; to add your business FAQs.</p>
+              <div class="swiss-card-body">
+                <input type="hidden" id="kbe-id" />
+                <div class="form-group">
+                  <label for="kbe-title">Title (optional)</label>
+                  <input type="text" id="kbe-title" placeholder="e.g. Return Policy, Business Hours, Shipping Info" />
+                  <div class="hint">Used as a label in the entry list. The AI reads the content, not the title.</div>
+                </div>
+                <div class="form-group">
+                  <label for="kbe-content">Content</label>
+                  <textarea id="kbe-content" rows="8" placeholder="Paste your business information here. The bot will use this as context when answering customer questions."></textarea>
+                  <div class="hint">The bot reads ALL entries as context before every reply.</div>
+                </div>
+                <div class="btn-row">
+                  <button class="btn btn-primary" id="kbe-save">Save Entry</button>
+                  <button class="btn btn-secondary" id="kbe-cancel">Cancel</button>
+                </div>
+                <div id="kbe-message" class="form-message" style="display:none"></div>
               </div>
             </div>
           </div>
 
-          <div class="glass" style="display:none" id="kb-editor-card">
-            <div class="glass-header" id="kb-editor-title">
-              <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              New Knowledge Entry
-            </div>
-            <div class="glass-body">
-              <input type="hidden" id="kbe-id" />
-              <div class="form-group">
-                <label for="kbe-title">Title (optional)</label>
-                <input type="text" id="kbe-title" placeholder="e.g. Return Policy, Business Hours, Shipping Info" />
-                <div class="hint">Used as a label in the entry list. The AI reads the content, not the title.</div>
+          <!-- ===== HANDOFFS VIEW ===== -->
+          <div id="view-handoffs" class="view">
+            <div class="swiss-card">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.33-.86.78-.97A3.996 3.996 0 0 0 22 10V3a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v7c0 1.68.98 3.13 2.4 3.8"/><path d="M20 3h3a1 1 0 0 1 1 1v6c0 2.21-1.79 4-4 4"/><path d="M4 7V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v3"/><path d="M9 21h-4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h4"/></svg>
+                Human Handoffs
+                <span id="handoff-header-count" style="font-size:10px;font-weight:400;"></span>
               </div>
-              <div class="form-group">
-                <label for="kbe-content">Content</label>
-                <textarea id="kbe-content" rows="10" placeholder="Paste your business information here. The bot will use this as context when answering customer questions.
-
-Example:
-Our return policy allows returns within 30 days of purchase.
-Business hours are Monday to Friday, 9 AM to 6 PM.
-Shipping takes 3-5 business days for domestic orders."></textarea>
-                <div class="hint">The bot reads ALL entries as context before every reply. Each entry becomes a section in the prompt.</div>
-              </div>
-              <div class="btn-row">
-                <button class="btn btn-primary" id="kbe-save">Save Entry</button>
-                <button class="btn btn-secondary" id="kbe-cancel">Cancel</button>
-              </div>
-              <div id="kbe-message" class="form-message" style="display:none"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ===== HANDOFFS ===== -->
-        <div id="view-handoffs" class="view">
-          <div class="glass">
-            <div class="glass-header">
-              <svg viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.33-.86.78-.97A3.996 3.996 0 0 0 22 10V3a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v7c0 1.68.98 3.13 2.4 3.8"/><path d="M20 3h3a1 1 0 0 1 1 1v6c0 2.21-1.79 4-4 4"/><path d="M4 7V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v3"/><path d="M9 21h-4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h4"/></svg>
-              Human Handoffs
-              <span id="handoff-header-count" style="font-size:12px;font-weight:400;"></span>
-            </div>
-            <div class="glass-body">
-              <div id="handoff-list"></div>
-              <div id="handoff-empty" class="empty-state" style="display:none;">
-                <svg class="empty-icon" viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.33-.86.78-.97A3.996 3.996 0 0 0 22 10V3a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v7c0 1.68.98 3.13 2.4 3.8"/><path d="M20 3h3a1 1 0 0 1 1 1v6c0 2.21-1.79 4-4 4"/><path d="M4 7V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v3"/><path d="M9 21h-4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h4"/></svg>
-                <p>All conversations are currently handled by the bot. No handoffs pending.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ===== CONVERSATIONS ===== -->
-        <div id="view-conversations" class="view">
-          <div class="glass" style="display:block;" id="conv-list-pane">
-            <div class="glass-header">
-              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Conversations
-              <span id="conv-header-count" style="font-size:12px;font-weight:400;"></span>
-            </div>
-            <div class="glass-body">
-              <div id="conv-list"></div>
-              <div id="conv-empty" class="empty-state">
-                <svg class="empty-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <p>No conversations yet. Messages will appear here when customers start chatting.</p>
+              <div class="swiss-card-body">
+                <div id="handoff-list"></div>
+                <div id="handoff-empty" class="empty-state" style="display:none;">
+                  <svg class="empty-icon" viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.33-.86.78-.97A3.996 3.996 0 0 0 22 10V3a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v7c0 1.68.98 3.13 2.4 3.8"/><path d="M20 3h3a1 1 0 0 1 1 1v6c0 2.21-1.79 4-4 4"/><path d="M4 7V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v3"/><path d="M9 21h-4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h4"/></svg>
+                  <p>All conversations are currently handled by the bot. No handoffs pending.</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="glass" style="display:none;" id="conv-detail-pane">
-            <div class="glass-header" style="display:flex;justify-content:space-between;align-items:center;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <button id="conv-back" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--accent);padding:0 4px;">←</button>
-                <span id="conv-detail-title" style="font-weight:600;font-size:15px;"></span>
+          <!-- ===== CONVERSATIONS VIEW ===== -->
+          <div id="view-conversations" class="view">
+            <div class="swiss-card" style="display:block;" id="conv-list-pane">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Conversations
+                <span id="conv-header-count" style="font-size:10px;font-weight:400;"></span>
               </div>
-              <span id="conv-detail-status" style="font-size:11px;color:var(--text-tertiary);"></span>
+              <div class="swiss-card-body">
+                <div id="conv-list"></div>
+                <div id="conv-empty" class="empty-state">
+                  <svg class="empty-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  <p>No conversations yet. Messages will appear here when customers start chatting.</p>
+                </div>
+              </div>
             </div>
-            <div class="glass-body" style="padding:0;">
-              <div id="conv-messages" style="display:flex;flex-direction:column;gap:8px;padding:16px;max-height:50vh;overflow-y:auto;min-height:200px;"></div>
-              <div id="conv-empty-msg" class="empty-state" style="display:none;padding:20px;">
+
+            <div class="swiss-card" style="display:none;" id="conv-detail-pane">
+              <div class="swiss-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="display:flex;align-items:center;gap:var(--space-2);">
+                  <button id="conv-back" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--accent);padding:0 4px;">←</button>
+                  <span id="conv-detail-title" style="font-weight:600;font-size:13px;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:var(--space-2);">
+                  <span id="conv-detail-status" style="font-size:10px;font-family:var(--font-mono);color:var(--text-tertiary);"></span>
+                </div>
+              </div>
+              <div id="conv-messages"></div>
+              <div id="conv-empty-msg" class="empty-state" style="display:none;padding:16px;">
                 <svg class="empty-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 <p>No messages yet.</p>
               </div>
-              <div style="border-top:1px solid var(--glass-border);padding:12px 16px;display:flex;gap:10px;align-items:flex-end;">
-                <textarea id="conv-reply-input" rows="2" placeholder="Type your reply…" style="flex:1;padding:10px 14px;font-size:14px;font-family:var(--font);background:var(--surface);color:var(--text-primary);border:1.5px solid var(--glass-border);border-radius:var(--radius-sm);outline:none;resize:none;min-height:40px;"></textarea>
-                <button id="conv-send-btn" class="btn btn-primary" style="flex-shrink:0;height:40px;">Send</button>
+              <div class="conv-reply-bar">
+                <textarea id="conv-reply-input" rows="2" placeholder="Type your reply…"></textarea>
+                <button id="conv-send-btn" class="btn btn-primary" style="flex-shrink:0;height:34px;">Send</button>
               </div>
-              <div id="conv-send-error" style="padding:0 16px 12px;font-size:12px;color:var(--red);display:none;"></div>
+              <div id="conv-send-error" style="padding:0 var(--space-3) var(--space-2);font-size:10px;color:var(--red);display:none;"></div>
             </div>
           </div>
-        </div>
 
-        <!-- ===== KB PREVIEW MODAL ===== -->
-        <div id="kb-preview-overlay" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);align-items:center;justify-content:center;">
-          <div class="glass" style="max-width:700px;width:90%;max-height:80vh;display:flex;flex-direction:column;">
-            <div class="glass-header" style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="display:flex;align-items:center;gap:8px;">
-                <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                Knowledge Base Context Preview
-              </span>
-              <button id="kb-preview-close" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-secondary);padding:0 4px;">×</button>
-            </div>
-            <div class="glass-body" style="overflow-y:auto;flex:1;">
-              <div id="kb-preview-info" style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;"></div>
-              <pre id="kb-preview-content" style="font-family:var(--mono);font-size:12px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;background:var(--surface);padding:16px;border-radius:var(--radius-sm);border:1px solid var(--glass-border);max-height:50vh;overflow-y:auto;margin:0;"></pre>
-              <div id="kb-preview-empty" class="empty-state" style="display:none;">
-                <svg class="empty-icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                <p>No knowledge entries yet. Add entries to see the context the AI will see.</p>
+          <!-- ===== KB PREVIEW MODAL ===== -->
+          <div id="kb-preview-overlay" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
+            <div class="swiss-card" style="max-width:650px;width:90%;max-height:75vh;display:flex;flex-direction:column;">
+              <div class="swiss-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="display:flex;align-items:center;gap:var(--space-2);">
+                  <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Knowledge Base Context Preview
+                </span>
+                <button id="kb-preview-close" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-secondary);padding:0 4px;">×</button>
+              </div>
+              <div class="swiss-card-body" style="overflow-y:auto;flex:1;">
+                <div id="kb-preview-info" style="font-family:var(--font-mono);font-size:10px;color:var(--text-tertiary);margin-bottom:var(--space-2);"></div>
+                <pre id="kb-preview-content" style="font-family:var(--font-mono);font-size:11px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;background:var(--bg-surface);padding:var(--space-3);border-radius:var(--radius-md);border:1px solid var(--border);max-height:50vh;overflow-y:auto;margin:0;"></pre>
+                <div id="kb-preview-empty" class="empty-state" style="display:none;">
+                  <svg class="empty-icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                  <p>No knowledge entries yet. Add entries to see the context the AI will see.</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- ===== LIVE LOGS ===== -->
-        <div id="view-logs" class="view">
-          <div class="glass">
-            <div class="glass-header" style="display:flex;align-items:center;justify-content:space-between;">
-              <span style="display:flex;align-items:center;gap:8px;">
-                <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                Live Logs
-              </span>
-              <div style="display:flex;align-items:center;gap:10px;">
-                <label style="font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:4px;cursor:pointer;">
-                  <input type="checkbox" id="log-autoscroll" checked /> Auto-scroll
-                </label>
-                <button class="btn btn-secondary btn-sm" id="log-clear">Clear</button>
+          <!-- ===== LIVE LOGS VIEW ===== -->
+          <div id="view-logs" class="view">
+            <div class="swiss-card">
+              <div class="swiss-card-header" style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="display:flex;align-items:center;gap:var(--space-2);">
+                  <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  Live Logs
+                </span>
+                <div style="display:flex;align-items:center;gap:var(--space-2);">
+                  <label style="font-size:10px;color:var(--text-secondary);display:flex;align-items:center;gap:3px;cursor:pointer;">
+                    <input type="checkbox" id="log-autoscroll" checked /> Auto-scroll
+                  </label>
+                  <button class="btn btn-secondary btn-sm" id="log-clear">Clear</button>
+                </div>
               </div>
-            </div>
-            <div style="padding:8px 20px;border-bottom:1px solid var(--glass-border);display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-              <div style="display:flex;gap:4px;flex-wrap:wrap;" id="log-filter-bar">
-                <button class="log-filter-btn active" data-level="">All</button>
-                <button class="log-filter-btn" data-level="info">Info</button>
-                <button class="log-filter-btn" data-level="bot">Bot</button>
-                <button class="log-filter-btn" data-level="warn">Warn</button>
-                <button class="log-filter-btn" data-level="error">Error</button>
-                <button class="log-filter-btn" data-level="debug">Debug</button>
+              <div style="padding:var(--space-2) var(--space-4);border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+                <div class="log-filter-bar" id="log-filter-bar">
+                  <button class="log-filter-btn active" data-level="">All</button>
+                  <button class="log-filter-btn" data-level="info">Info</button>
+                  <button class="log-filter-btn" data-level="bot">Bot</button>
+                  <button class="log-filter-btn" data-level="warn">Warn</button>
+                  <button class="log-filter-btn" data-level="error">Error</button>
+                  <button class="log-filter-btn" data-level="debug">Debug</button>
+                </div>
+                <input type="text" id="log-search" placeholder="Search messages…" style="flex:1;min-width:100px;padding:4px 8px;font-size:10.5px;font-family:var(--font-sans);background:var(--bg-hover);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);outline:none;" />
               </div>
-              <input type="text" id="log-search" placeholder="Search messages…" style="flex:1;min-width:120px;padding:6px 10px;font-size:12px;font-family:var(--font);background:var(--surface);color:var(--text-primary);border:1px solid var(--glass-border);border-radius:var(--radius-sm);outline:none;" />
+              <div class="swiss-card-body" id="log-list" style="max-height:50vh;overflow-y:auto;padding:4px 0;"></div>
             </div>
-            <div class="glass-body" id="log-list" style="max-height:55vh;overflow-y:auto;padding:6px 16px;"></div>
           </div>
-        </div>
 
-      </div><!-- /content -->
-    </div><!-- /main -->
-  </div><!-- /app-layout -->
+        </div><!-- /content -->
+      </div><!-- /main -->
+    </div><!-- /app-layout -->
+
+    <!-- ===== Tab Bar (mobile) ===== -->
+    <div id="tabbar">
+      <button class="tab-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="tab-item" data-view="conversations">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Chats</span>
+      </button>
+      <button class="tab-item" data-view="handoffs" id="tab-handoffs">
+        <svg viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.33-.86.78-.97A3.996 3.996 0 0 0 22 10V3a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v7c0 1.68.98 3.13 2.4 3.8"/><path d="M20 3h3a1 1 0 0 1 1 1v6c0 2.21-1.79 4-4 4"/><path d="M4 7V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v3"/><path d="M9 21h-4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h4"/></svg>
+        <span>Handoffs</span>
+        <span class="tab-badge" id="handoff-tab-badge" style="display:none">0</span>
+      </button>
+      <button class="tab-item" data-view="knowledge">
+        <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <span>Knowledge</span>
+      </button>
+      <button class="tab-item" data-view="config">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        <span>Settings</span>
+      </button>
+    </div>
+
+  </div><!-- /dashboard-content -->
 
   <!-- ==================================================================
-       Bottom Tab Bar (mobile) — max 5 items
-       ================================================================== -->
-  <div id="tabbar">
-    <button class="tab-item active" data-view="dashboard">
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-      <span>Dashboard</span>
-    </button>
-    <button class="tab-item" data-view="conversations">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      <span>Chats</span>
-    </button>
-    <button class="tab-item" data-view="handoffs" id="tab-handoffs">
-      <svg viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.33-.86.78-.97A3.996 3.996 0 0 0 22 10V3a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v7c0 1.68.98 3.13 2.4 3.8"/><path d="M20 3h3a1 1 0 0 1 1 1v6c0 2.21-1.79 4-4 4"/><path d="M4 7V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v3"/><path d="M9 21h-4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h4"/></svg>
-      <span>Handoffs</span>
-      <span class="tab-badge" id="handoff-tab-badge" style="display:none">0</span>
-    </button>
-    <button class="tab-item" data-view="knowledge">
-      <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-      <span>Knowledge</span>
-    </button>
-    <button class="tab-item" data-view="config">
-      <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></svg>
-      <span>Settings</span>
-    </button>
+     Confirm Modal
+     ================================================================== -->
+  <div id="confirm-overlay">
+    <div id="confirm-box">
+      <div class="confirm-title" id="confirm-title"></div>
+      <div class="confirm-message" id="confirm-message"></div>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+        <button class="btn btn-danger" id="confirm-ok">Delete</button>
+      </div>
+    </div>
   </div>
 
   <!-- ==================================================================
-       Scripts
-       ================================================================== -->
+     Scripts
+     ================================================================== -->
+  <script>
+    /* ── Custom confirm modal (replaces window.confirm) ─────────────── */
+    /* ── Custom confirm modal (replaces window.confirm) ─────────────── */
+    function showConfirm(title, message) {
+      return new Promise((resolve) => {
+        const overlay = document.getElementById('confirm-overlay');
+        const titleEl = document.getElementById('confirm-title');
+        const msgEl = document.getElementById('confirm-message');
+        const okBtn = document.getElementById('confirm-ok');
+        const cancelBtn = document.getElementById('confirm-cancel');
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        overlay.style.display = 'flex';
+
+        function cleanup(result) {
+          overlay.style.display = 'none';
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancel);
+          resolve(result);
+        }
+        function onOk() { cleanup(true); }
+        function onCancel() { cleanup(false); }
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+      });
+    }
+
+    /* ── Auth-aware fetch helper ───────────────────────────────────── */
+    async function apiFetch(url, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      if (window.__authToken) {
+        headers['Authorization'] = 'Bearer ' + window.__authToken;
+      }
+      const res = await fetch(url, { ...options, headers });
+      if (res.status === 401 && typeof window.__handleAuthError === 'function') {
+        window.__handleAuthError();
+      }
+      return res;
+    }
+
+    /* ── Toast notification (auto-dismiss) ─────────────────────────── */
+    function showToast(message, type) {
+      let toast = document.getElementById('toast-bar');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-bar';
+        toast.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:9999;padding:8px 18px;border-radius:var(--radius-md);font-size:12px;font-weight:600;font-family:var(--font-sans);transition:opacity .15s ease;pointer-events:none;';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = message;
+      toast.style.background = type === 'error' ? 'var(--red)' : 'var(--green)';
+      toast.style.color = '#fff';
+      toast.style.opacity = '1';
+      toast.style.display = '';
+      clearTimeout(toast._hideTimer);
+      toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+    }
+  </script>
   <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
   <script src="js/analytics.js"></script>
