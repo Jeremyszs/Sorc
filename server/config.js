@@ -53,6 +53,26 @@ try {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS reply_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      shortcut TEXT DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS conversation_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      body TEXT NOT NULL,
+      author TEXT DEFAULT 'Sorc AI',
+      is_auto_generated INTEGER DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_notes_phone ON conversation_notes(phone);
   `);
 } catch (err) {
   console.error('[config] Failed to create tables:', err.message);

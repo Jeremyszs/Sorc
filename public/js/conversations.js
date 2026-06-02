@@ -22,6 +22,157 @@
   let _refreshTimer = null;
   let _selectionMode = false;
   let _selectedPhones = new Set();
+  let _searchQuery = '';
+  let _searchTimer = null;
+  let _searchActive = false;
+  let _searchResults = [];
+
+  // ---- Notes refs ---------------------------------------------------------
+  const notesSection = document.getElementById('conv-notes-section');
+  const notesToggle = document.getElementById('conv-notes-toggle');
+  const notesChevron = document.getElementById('conv-notes-chevron');
+  const notesCount = document.getElementById('conv-notes-count');
+  const notesBody = document.getElementById('conv-notes-body');
+  const notesList = document.getElementById('conv-notes-list');
+  const notesEmpty = document.getElementById('conv-notes-empty');
+  const notesLoading = document.getElementById('conv-notes-loading');
+  const notesEditor = document.getElementById('conv-notes-editor');
+  const notesEditorInput = document.getElementById('conv-notes-editor-input');
+  const notesSaveBtn = document.getElementById('conv-notes-save-btn');
+  const notesCancelBtn = document.getElementById('conv-notes-cancel-btn');
+  const notesEditorMsg = document.getElementById('conv-notes-editor-msg');
+  const notesAddBtn = document.getElementById('conv-notes-add-btn');
+  const notesGenBtn = document.getElementById('conv-notes-gen-btn');
+  const notesGenEmptyBtn = document.getElementById('conv-notes-gen-empty-btn');
+
+  let _notes = [];
+  let _notesOpen = false;
+  let _editingNoteId = null;
+
+  // ---- Search bar refs -----------------------------------------------------
+  const searchInput = document.getElementById('conv-search-input');
+  const searchClear = document.getElementById('conv-search-clear');
+  const searchCount = document.getElementById('conv-search-count');
+
+  function removeSearchEmpty() {
+    if (_searchEmptyOriginal) {
+      _searchEmptyOriginal.remove();
+      _searchEmptyOriginal = null;
+    }
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(_searchTimer);
+      removeSearchEmpty();
+      const val = searchInput.value.trim();
+      if (!val) {
+        _searchActive = false;
+        _searchResults = [];
+        if (searchClear) searchClear.style.display = 'none';
+        if (searchCount) searchCount.style.display = 'none';
+        loadConversations();
+        return;
+      }
+      searchInput.style.background = 'var(--bg-hover)';
+      _searchTimer = setTimeout(() => doSearch(val), 300);
+    });
+  }
+
+  if (searchClear) {
+    searchClear.addEventListener('click', () => {
+      if (searchInput) searchInput.value = '';
+      removeSearchEmpty();
+      _searchActive = false;
+      _searchResults = [];
+      searchClear.style.display = 'none';
+      if (searchCount) searchCount.style.display = 'none';
+      loadConversations();
+    });
+  }
+
+  async function doSearch(q) {
+    _searchQuery = q;
+    removeSearchEmpty();
+    try {
+      const res = await apiFetch('/api/conversations/search?q=' + encodeURIComponent(q));
+      if (!res.ok) throw new Error('Search failed');
+      const data = await res.json();
+      _searchResults = data.results || [];
+      _searchActive = true;
+      if (searchClear) searchClear.style.display = '';
+      if (searchCount) {
+        searchCount.textContent = data.total + ' match' + (data.total !== 1 ? 'es' : '');
+        searchCount.style.display = '';
+      }
+      renderSearchResults();
+    } catch (err) {
+      console.error('Search error:', err);
+    }
+  }
+
+  let _searchEmptyOriginal = null;
+
+  function renderSearchResults() {
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'none';
+    if (headerCount) headerCount.textContent = '';
+
+    if (!_searchResults || !_searchResults.length) {
+      // Build the search-specific empty state
+      const searchEmpty = document.createElement('div');
+      searchEmpty.style.cssText = 'text-align:center;padding:var(--space-6) var(--space-4);color:var(--text-tertiary);';
+      searchEmpty.innerHTML = '<svg class="empty-icon" viewBox="0 0 24 24" style="width:28px;height:28px;opacity:.3;stroke:currentColor;fill:none;stroke-width:1.5;display:block;margin:0 auto var(--space-2);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p style="font-size:11px;">No messages match &#8220;' + esc(_searchQuery) + '&#8221;</p>';
+      if (emptyEl.parentNode) {
+        emptyEl.style.display = 'none';
+        emptyEl.parentNode.insertBefore(searchEmpty, emptyEl.nextSibling);
+        _searchEmptyOriginal = searchEmpty;
+      }
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    for (const group of _searchResults) {
+      const card = document.createElement('div');
+      card.className = 'conv-card';
+      card.dataset.phone = group.phone;
+      card.addEventListener('click', () => openConversation(group.phone));
+
+      const avatar = document.createElement('div');
+      avatar.className = 'conv-avatar';
+      avatar.textContent = (group.displayName || group.phone || '?').charAt(0).toUpperCase();
+
+      const info = document.createElement('div');
+      info.className = 'conv-info';
+
+      const row1 = document.createElement('div');
+      row1.className = 'conv-row1';
+      const name = document.createElement('div');
+      name.className = 'conv-name';
+      name.textContent = group.displayName || group.phone || 'Unknown';
+      const firstMsg = group.messages?.[0];
+      const time = document.createElement('div');
+      time.className = 'conv-time';
+      time.textContent = firstMsg ? formatTime(firstMsg.timestamp) : '';
+      row1.appendChild(name);
+      row1.appendChild(time);
+
+      // Show matching message(s) as previews
+      for (const m of (group.messages || []).slice(0, 3)) {
+        const preview = document.createElement('div');
+        preview.className = 'conv-preview';
+        preview.style.cssText = 'font-size:10.5px;color:var(--text-secondary);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        const dirLabel = m.direction === 'sent' ? '→ ' : '← ';
+        preview.textContent = dirLabel + m.body;
+        info.appendChild(preview);
+      }
+
+      card.appendChild(avatar);
+      card.appendChild(info);
+      fragment.appendChild(card);
+    }
+    listEl.appendChild(fragment);
+  }
 
   // ---- Selection bar (inserted above the list) --------------------------
   const selectionBar = document.createElement('div');
@@ -118,6 +269,7 @@
   // ---- Load conversation list -----------------------------------------
 
   async function loadConversations() {
+    if (_searchActive) return;
     try {
       const res = await apiFetch('/api/conversations');
       if (!res.ok) {
@@ -132,6 +284,7 @@
   }
 
   function renderConversations() {
+    if (_searchActive) return;
     if (!_conversations || !_conversations.length) {
       listEl.innerHTML = '';
       emptyEl.style.display = '';
@@ -258,6 +411,15 @@
     sendError.style.display = 'none';
     replyInput.value = '';
 
+    // Reset notes state
+    _notes = [];
+    _notesOpen = false;
+    _editingNoteId = null;
+    if (notesSection) notesSection.style.display = 'none';
+    if (notesBody) notesBody.style.display = 'none';
+    if (notesEditor) notesEditor.style.display = 'none';
+    closeNoteEditor();
+
     document.querySelectorAll('.conv-card').forEach((c) => c.classList.remove('selected'));
 
     try {
@@ -266,10 +428,14 @@
       const data = await res.json();
       renderMessages(data.messages || []);
       markRead(phone);
+      // Show notes section and load notes
+      if (notesSection) notesSection.style.display = '';
+      loadNotes(phone);
     } catch (err) {
       console.error('Failed to load messages:', err);
       emptyMsgEl.textContent = 'Failed to load messages.';
       emptyMsgEl.style.display = '';
+      if (notesSection) notesSection.style.display = 'none';
     }
   }
 
@@ -300,6 +466,243 @@
     }
 
     messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  // ====================================================================
+  // Notes (AI summaries) — functions
+  // ====================================================================
+
+  function showNotesLoading(show) {
+    if (notesLoading) notesLoading.style.display = show ? '' : 'none';
+    if (notesEmpty) notesEmpty.style.display = 'none';
+  }
+
+  async function loadNotes(phone) {
+    if (!phone) return;
+    try {
+      const res = await apiFetch('/api/notes/' + encodeURIComponent(phone));
+      if (!res.ok) throw new Error('Failed to load notes');
+      _notes = await res.json();
+      renderNotes();
+      // Auto-generate if no notes exist
+      if (!_notes || !_notes.length) {
+        autoGenerateSummary(phone);
+      }
+    } catch (err) {
+      console.error('Failed to load notes:', err);
+      _notes = [];
+      renderNotes();
+    }
+  }
+
+  async function autoGenerateSummary(phone) {
+    showNotesLoading(true);
+    if (notesGenEmptyBtn) notesGenEmptyBtn.style.display = 'none';
+    // Show the notes body with loading indicator
+    if (notesBody) notesBody.style.display = '';
+    if (notesChevron) notesChevron.style.transform = 'rotate(180deg)';
+    _notesOpen = true;
+    try {
+      const res = await apiFetch('/api/notes/' + encodeURIComponent(phone) + '/generate', { method: 'POST' });
+      if (!res.ok) throw new Error('Generation failed');
+      const data = await res.json();
+      if (data.empty) {
+        showNotesLoading(false);
+        if (notesList) notesList.innerHTML = '';
+        if (notesList) notesList.style.display = '';
+        if (notesEmpty) {
+          notesEmpty.style.display = '';
+          const emptyP = notesEmpty.querySelector('p');
+          if (emptyP) emptyP.textContent = 'No messages to summarize.';
+          if (notesGenEmptyBtn) notesGenEmptyBtn.style.display = 'none';
+        }
+        return;
+      }
+      // Reload notes from server
+      await loadNotes(phone);
+    } catch (err) {
+      console.error('Summary generation failed:', err);
+      showNotesLoading(false);
+      if (notesList) notesList.style.display = '';
+      if (notesEmpty) {
+        notesEmpty.style.display = '';
+        const emptyP = notesEmpty.querySelector('p');
+        if (emptyP) emptyP.textContent = 'Could not generate summary.';
+        if (notesGenEmptyBtn) notesGenEmptyBtn.style.display = '';
+      }
+    }
+  }
+
+  function renderNotes() {
+    if (notesCount) {
+      notesCount.textContent = _notes && _notes.length ? '(' + _notes.length + ')' : '';
+    }
+    // Always show action buttons when notes section is active
+    if (notesGenBtn) {
+      notesGenBtn.style.display = _notes && _notes.length ? '' : 'none';
+    }
+    if (notesAddBtn) {
+      notesAddBtn.style.display = ''; // always visible so user can add notes
+    }
+
+    // Clear loading state
+    if (notesLoading) notesLoading.style.display = 'none';
+    if (notesList) notesList.style.display = '';
+
+    if (!_notes || !_notes.length) {
+      if (notesList) notesList.innerHTML = '';
+      // Don't touch notesEmpty here — autoGenerateSummary manages it
+      return;
+    }
+
+    if (notesEmpty) notesEmpty.style.display = 'none';
+
+    // Auto-expand the notes section when there's content
+    if (!_notesOpen) {
+      _notesOpen = true;
+      if (notesBody) notesBody.style.display = '';
+      if (notesChevron) notesChevron.style.transform = 'rotate(180deg)';
+    }
+
+    const fragment = document.createDocumentFragment();
+    for (const note of _notes) {
+      const card = document.createElement('div');
+      card.className = 'conv-note-card';
+      card.dataset.noteId = note.id;
+
+      // Note body
+      const bodyEl = document.createElement('div');
+      bodyEl.className = 'conv-note-body';
+      bodyEl.textContent = note.body || '';
+
+      // Meta: badge + author + timestamp
+      const metaEl = document.createElement('div');
+      metaEl.className = 'conv-note-meta';
+
+      if (note.is_auto_generated) {
+        const badge = document.createElement('span');
+        badge.className = 'conv-note-badge ai';
+        badge.textContent = 'AI';
+        metaEl.appendChild(badge);
+      } else {
+        const badge = document.createElement('span');
+        badge.className = 'conv-note-badge edited';
+        badge.textContent = 'Edited';
+        metaEl.appendChild(badge);
+      }
+
+      const author = note.author || 'Sorc AI';
+      const timeStr = note.updated_at ? formatTime(note.updated_at) : '';
+      metaEl.appendChild(document.createTextNode(author + ' · ' + timeStr));
+
+      // Actions
+      const actionsEl = document.createElement('div');
+      actionsEl.className = 'conv-note-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn btn-secondary btn-sm';
+      editBtn.textContent = 'Edit';
+      editBtn.style.cssText = 'font-size:8px;padding:1px 8px;';
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openNoteEditor(note);
+      });
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-danger btn-sm';
+      delBtn.textContent = 'Delete';
+      delBtn.style.cssText = 'font-size:8px;padding:1px 8px;';
+      delBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const ok = await showConfirm('Delete Note', 'Delete this note?');
+        if (!ok) return;
+        await deleteNote(note.id);
+      });
+
+      actionsEl.appendChild(editBtn);
+      actionsEl.appendChild(delBtn);
+
+      card.appendChild(bodyEl);
+      card.appendChild(metaEl);
+      card.appendChild(actionsEl);
+      fragment.appendChild(card);
+    }
+
+    if (notesList) {
+      notesList.innerHTML = '';
+      notesList.appendChild(fragment);
+    }
+  }
+
+  function openNoteEditor(note) {
+    _editingNoteId = note ? note.id : null;
+    if (notesEditorInput) notesEditorInput.value = note ? (note.body || '') : '';
+    if (notesEditor) notesEditor.style.display = '';
+    if (notesEditorMsg) notesEditorMsg.style.display = 'none';
+    if (notesEditorInput) notesEditorInput.focus();
+    if (notesSaveBtn) notesSaveBtn.textContent = note ? 'Update' : 'Save Note';
+  }
+
+  function closeNoteEditor() {
+    _editingNoteId = null;
+    if (notesEditorInput) notesEditorInput.value = '';
+    if (notesEditor) notesEditor.style.display = 'none';
+    if (notesEditorMsg) notesEditorMsg.style.display = 'none';
+  }
+
+  async function saveNote() {
+    const body = notesEditorInput ? notesEditorInput.value.trim() : '';
+    if (!body) {
+      if (notesEditorMsg) {
+        notesEditorMsg.textContent = 'Note cannot be empty.';
+        notesEditorMsg.style.display = '';
+      }
+      return;
+    }
+
+    if (notesSaveBtn) notesSaveBtn.disabled = true;
+    try {
+      let res;
+      if (_editingNoteId) {
+        // Update existing note
+        res = await apiFetch('/api/notes/' + _editingNoteId, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body }),
+        });
+      } else {
+        // Create new note
+        res = await apiFetch('/api/notes/' + encodeURIComponent(_currentPhone), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body }),
+        });
+      }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Save failed');
+      }
+      closeNoteEditor();
+      await loadNotes(_currentPhone);
+    } catch (err) {
+      if (notesEditorMsg) {
+        notesEditorMsg.textContent = 'Failed: ' + err.message;
+        notesEditorMsg.style.display = '';
+      }
+    } finally {
+      if (notesSaveBtn) notesSaveBtn.disabled = false;
+    }
+  }
+
+  async function deleteNote(noteId) {
+    try {
+      const res = await apiFetch('/api/notes/' + noteId, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      await loadNotes(_currentPhone);
+    } catch (err) {
+      console.error('Failed to delete note:', err);
+      if (typeof showToast === 'function') showToast('Failed to delete note', 'error');
+    }
   }
 
   // ---- Send reply ------------------------------------------------------
@@ -339,11 +742,72 @@
     }
   });
 
+  // Attach template picker to the reply bar
+  (function initTemplatePicker() {
+    if (typeof window.__attachTemplatePicker === 'function' && replyInput && sendBtn) {
+      window.__attachTemplatePicker(replyInput, sendBtn);
+    }
+  })();
+
   if (backBtn) backBtn.addEventListener('click', () => {
     _currentPhone = null;
     if (detailPane) detailPane.style.display = 'none';
     if (listPane) listPane.style.display = 'block';
+    if (notesSection) notesSection.style.display = 'none';
+    _notes = [];
+    _notesOpen = false;
+    closeNoteEditor();
   });
+
+  // ---- Notes: event listeners ------------------------------------------
+
+  if (notesToggle) {
+    notesToggle.addEventListener('click', () => {
+      _notesOpen = !_notesOpen;
+      if (notesBody) notesBody.style.display = _notesOpen ? '' : 'none';
+      if (notesChevron) notesChevron.style.transform = _notesOpen ? 'rotate(180deg)' : '';
+    });
+  }
+
+  if (notesAddBtn) {
+    notesAddBtn.addEventListener('click', () => {
+      if (!_notesOpen) {
+        _notesOpen = true;
+        if (notesBody) notesBody.style.display = '';
+        if (notesChevron) notesChevron.style.transform = 'rotate(180deg)';
+      }
+      openNoteEditor(null);
+    });
+  }
+
+  if (notesGenBtn) {
+    notesGenBtn.addEventListener('click', () => {
+      autoGenerateSummary(_currentPhone);
+    });
+  }
+
+  if (notesGenEmptyBtn) {
+    notesGenEmptyBtn.addEventListener('click', () => {
+      autoGenerateSummary(_currentPhone);
+    });
+  }
+
+  if (notesSaveBtn) {
+    notesSaveBtn.addEventListener('click', saveNote);
+  }
+
+  if (notesCancelBtn) {
+    notesCancelBtn.addEventListener('click', closeNoteEditor);
+  }
+
+  if (notesEditorInput) {
+    notesEditorInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        saveNote();
+      }
+    });
+  }
 
   // ---- Mark as read ----------------------------------------------------
 

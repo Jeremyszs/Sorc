@@ -695,6 +695,71 @@
       border-color: var(--accent);
     }
 
+    /* ── Conversation Notes (AI summaries) ────────────────────────────── */
+    .conv-notes-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-2) var(--space-4);
+      border-top: 1px solid var(--border);
+      background: var(--bg-surface);
+      cursor: pointer;
+    }
+    .conv-notes-header:hover {
+      background: var(--bg-hover);
+    }
+    .conv-note-card {
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      margin-bottom: var(--space-2);
+    }
+    .conv-note-card:last-child {
+      margin-bottom: 0;
+    }
+    .conv-note-body {
+      font-size: 11px;
+      color: var(--text-primary);
+      line-height: 1.5;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .conv-note-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-tertiary);
+      margin-top: var(--space-2);
+    }
+    .conv-note-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      line-height: 1.4;
+    }
+    .conv-note-badge.ai {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .conv-note-badge.edited {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+    .conv-note-actions {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+      justify-content: flex-end;
+    }
+
     /* ====================================================================
        Handoff cards
        ==================================================================== */
@@ -1400,6 +1465,10 @@
             <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
             Knowledge Base
           </button>
+          <button class="nav-item" data-view="templates">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Templates
+          </button>
           <button class="nav-item" data-view="config">
             <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
             Bot Settings
@@ -1704,6 +1773,56 @@
             </div>
           </div>
 
+          <!-- ===== TEMPLATES VIEW ===== -->
+          <div id="view-templates" class="view">
+            <div class="swiss-card">
+              <div class="swiss-card-header">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Message Templates
+                <span id="tpl-count" style="font-size:10px;font-weight:400;"></span>
+              </div>
+              <div class="swiss-card-body">
+                <div class="btn-row" style="margin-bottom:var(--space-3);">
+                  <button class="btn btn-primary" id="tpl-add-btn">+ New Template</button>
+                </div>
+                <div id="tpl-list"></div>
+                <div id="tpl-empty" class="empty-state">
+                  <svg class="empty-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  <p>No templates yet. Create saved replies for common responses.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Editor card (hidden by default) -->
+            <div class="swiss-card" id="tpl-editor" style="display:none;">
+              <div class="swiss-card-header" id="tpl-editor-title">
+                <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                New Template
+              </div>
+              <div class="swiss-card-body">
+                <input type="hidden" id="tpl-editor-id" />
+                <div class="form-group">
+                  <label for="tpl-editor-title-input">Title</label>
+                  <input type="text" id="tpl-editor-title-input" placeholder="e.g. Shipping Info, Return Policy, Greeting" />
+                </div>
+                <div class="form-group">
+                  <label for="tpl-editor-body">Message Body</label>
+                  <textarea id="tpl-editor-body" rows="4" placeholder="Type the saved reply text here…"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="tpl-editor-shortcut">Shortcut (optional)</label>
+                  <input type="text" id="tpl-editor-shortcut" placeholder="e.g. /ship" />
+                  <div class="hint">Type this in the reply box to quickly insert the template.</div>
+                </div>
+                <div class="btn-row">
+                  <button class="btn btn-primary" id="tpl-save-btn">Save Template</button>
+                  <button class="btn btn-secondary" id="tpl-cancel-btn">Cancel</button>
+                </div>
+                <div id="tpl-message" class="form-message" style="display:none"></div>
+              </div>
+            </div>
+          </div>
+
           <!-- ===== HANDOFFS VIEW ===== -->
           <div id="view-handoffs" class="view">
             <div class="swiss-card">
@@ -1731,6 +1850,13 @@
                 <span id="conv-header-count" style="font-size:10px;font-weight:400;"></span>
               </div>
               <div class="swiss-card-body">
+                <!-- Search bar -->
+                <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3);">
+                  <svg viewBox="0 0 24 24" style="width:14px;height:14px;flex-shrink:0;stroke:var(--text-tertiary);fill:none;stroke-width:2;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" id="conv-search-input" placeholder="Search conversations..." style="flex:1;padding:5px 8px;font-size:12px;font-family:var(--font-sans);background:var(--bg-hover);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);outline:none;transition:border-color var(--transition-fast);" />
+                  <button id="conv-search-clear" class="btn btn-secondary btn-sm" style="display:none;font-size:9px;padding:2px 8px;">Clear</button>
+                  <span id="conv-search-count" style="font-size:10px;color:var(--text-tertiary);font-family:var(--font-mono);display:none;"></span>
+                </div>
                 <div id="conv-list"></div>
                 <div id="conv-empty" class="empty-state">
                   <svg class="empty-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -1753,6 +1879,39 @@
               <div id="conv-empty-msg" class="empty-state" style="display:none;padding:16px;">
                 <svg class="empty-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 <p>No messages yet.</p>
+              </div>
+              <!-- ===== Conversation Notes (AI summaries) ===== -->
+              <div id="conv-notes-section" style="display:none;">
+                <div class="conv-notes-header" id="conv-notes-toggle">
+                  <div style="display:flex;align-items:center;gap:var(--space-2);flex:1;cursor:pointer;">
+                    <svg id="conv-notes-chevron" viewBox="0 0 24 24" style="width:12px;height:12px;stroke:var(--text-tertiary);fill:none;stroke-width:2;transition:transform var(--transition-fast);"><polyline points="6 9 12 15 18 9"/></svg>
+                    <span style="font-size:10px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;">Summary &amp; Notes</span>
+                    <span id="conv-notes-count" style="font-size:9px;font-family:var(--font-mono);color:var(--text-tertiary);"></span>
+                  </div>
+                  <div style="display:flex;gap:var(--space-2);align-items:center;">
+                    <button id="conv-notes-gen-btn" class="btn btn-secondary btn-sm" style="font-size:9px;padding:1px 8px;line-height:1.6;display:none;">Regenerate</button>
+                    <button id="conv-notes-add-btn" class="btn btn-secondary btn-sm" style="font-size:9px;padding:1px 8px;line-height:1.6;display:none;">+ Add Note</button>
+                  </div>
+                </div>
+                <div id="conv-notes-body" style="display:none;">
+                  <div id="conv-notes-list" style="padding:var(--space-2) var(--space-4) var(--space-3);"></div>
+                  <div id="conv-notes-empty" style="padding:var(--space-3) var(--space-4);text-align:center;display:none;">
+                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;opacity:.3;stroke:var(--text-tertiary);fill:none;stroke-width:1.5;display:block;margin:0 auto 4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <p style="font-size:10px;color:var(--text-tertiary);margin:0;">No summary yet.</p>
+                    <button id="conv-notes-gen-empty-btn" class="btn btn-secondary btn-sm" style="font-size:9px;margin-top:6px;padding:2px 12px;">Generate Summary</button>
+                  </div>
+                  <div id="conv-notes-loading" style="padding:var(--space-3) var(--space-4);text-align:center;display:none;">
+                    <span style="font-size:10px;color:var(--text-tertiary);">Generating summary…</span>
+                  </div>
+                  <div id="conv-notes-editor" style="display:none;padding:0 var(--space-4) var(--space-3);border-top:1px solid var(--border);padding-top:var(--space-3);">
+                    <textarea id="conv-notes-editor-input" rows="3" placeholder="Write an internal note..." style="width:100%;padding:6px 8px;font-size:11px;font-family:var(--font-sans);background:var(--bg-hover);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-md);outline:none;resize:vertical;transition:border-color var(--transition-fast);"></textarea>
+                    <div style="display:flex;gap:var(--space-2);margin-top:var(--space-2);">
+                      <button id="conv-notes-save-btn" class="btn btn-primary btn-sm" style="font-size:10px;padding:3px 14px;">Save Note</button>
+                      <button id="conv-notes-cancel-btn" class="btn btn-secondary btn-sm" style="font-size:10px;padding:3px 14px;">Cancel</button>
+                      <span id="conv-notes-editor-msg" style="font-size:9px;color:var(--text-tertiary);align-self:center;display:none;"></span>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="conv-reply-bar">
                 <textarea id="conv-reply-input" rows="2" placeholder="Type your reply…"></textarea>
@@ -1826,6 +1985,10 @@
       <button class="tab-item" data-view="conversations">
         <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <span>Chats</span>
+      </button>
+      <button class="tab-item" data-view="templates" id="tab-templates">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span>Templates</span>
       </button>
       <button class="tab-item" data-view="handoffs" id="tab-handoffs">
         <svg viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.33-.86.78-.97A3.996 3.996 0 0 0 22 10V3a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v7c0 1.68.98 3.13 2.4 3.8"/><path d="M20 3h3a1 1 0 0 1 1 1v6c0 2.21-1.79 4-4 4"/><path d="M4 7V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v3"/><path d="M9 21h-4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h4"/></svg>
@@ -1927,6 +2090,7 @@
   <script src="js/config-editor.js"></script>
   <script src="js/logs.js"></script>
   <script src="js/knowledge-base.js"></script>
+  <script src="js/templates.js"></script>
   <script src="js/handoffs.js"></script>
   <script src="js/conversations.js"></script>
 </body>

@@ -30,6 +30,7 @@ const NAV_TITLES = {
   ai: 'AI Settings',
   knowledge: 'Knowledge Base',
   handoffs: 'Human Handoffs',
+  templates: 'Message Templates',
   logs: 'Live Logs',
 };
 

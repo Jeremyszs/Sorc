@@ -164,6 +164,71 @@ app.get('/api/knowledge/stats', (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Reply Templates API
+// ---------------------------------------------------------------------------
+
+/** GET /api/templates — list all templates (newest first) */
+app.get('/api/templates', (_req, res) => {
+  try {
+    const rows = db.prepare('SELECT * FROM reply_templates ORDER BY created_at DESC').all();
+    res.json(rows);
+  } catch (err) {
+    logger.error('Templates list error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** POST /api/templates — create a template */
+app.post('/api/templates', express.json(), (req, res) => {
+  try {
+    const { title, body, shortcut } = req.body || {};
+    if (!title || !title.trim() || !body || !body.trim()) {
+      return res.status(400).json({ error: 'title and body are required' });
+    }
+    const now = Date.now();
+    const info = db.prepare(
+      'INSERT INTO reply_templates (title, body, shortcut, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(title.trim(), body.trim(), (shortcut || '').trim(), now, now);
+    res.json({ id: info.lastInsertRowid, ok: true });
+  } catch (err) {
+    logger.error('Templates create error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** PUT /api/templates/:id — update a template */
+app.put('/api/templates/:id', express.json(), (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'invalid id' });
+    const { title, body, shortcut } = req.body || {};
+    if (!title || !title.trim() || !body || !body.trim()) {
+      return res.status(400).json({ error: 'title and body are required' });
+    }
+    db.prepare(
+      'UPDATE reply_templates SET title = ?, body = ?, shortcut = ?, updated_at = ? WHERE id = ?'
+    ).run(title.trim(), body.trim(), (shortcut || '').trim(), Date.now(), id);
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Templates update error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** DELETE /api/templates/:id — delete a template */
+app.delete('/api/templates/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'invalid id' });
+    db.prepare('DELETE FROM reply_templates WHERE id = ?').run(id);
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Templates delete error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Auth API (no auth required — handles login)
 // ---------------------------------------------------------------------------
 app.post('/api/auth/login', express.json(), (req, res) => {
@@ -320,6 +385,196 @@ app.get('/api/conversations/:phone/messages', (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Conversation Notes API (AI summaries + CRUD)
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate an AI summary for a conversation by calling the LLM.
+ * Reuses the same OpenAI-compatible endpoint as bot-engine.js.
+ */
+async function generateConversationSummary(phone) {
+  const aiSettings = config.current.aiSettings || {};
+  const endpoint = (aiSettings.endpoint || 'http://localhost:20128/v1').replace(/\/+$/, '');
+  const model = aiSettings.model || 'auto';
+
+  // Fetch the last 20 messages for context
+  const likeJid = '%' + phone.replace(/[^0-9]/g, '') + '%';
+  const messages = db.prepare(`
+    SELECT body, direction, timestamp FROM messages
+    WHERE (from_number LIKE ? OR to_number LIKE ?)
+    ORDER BY timestamp ASC
+    LIMIT 20
+  `).all(likeJid, likeJid);
+
+  if (!messages.length) {
+    return { summary: null, empty: true };
+  }
+
+  // Build conversation transcript for the prompt
+  const transcript = messages.map(m => {
+    const who = m.direction === 'sent' ? 'Agent' : 'Customer';
+    const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `[${time}] ${who}: ${m.body}`;
+  }).join('\n');
+
+  const prompt = `Summarize this WhatsApp conversation in 2-3 concise sentences. Focus on:
+1. What the customer needed or asked about
+2. What was resolved or communicated
+3. Any pending actions or follow-ups needed
+
+Conversation:
+${transcript}`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    let response;
+    try {
+      response = await fetch(`${endpoint}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          max_tokens: 300,
+          temperature: 0.3,
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant that writes concise conversation summaries for customer service agents.' },
+            { role: 'user', content: prompt },
+          ],
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!response.ok) {
+      throw new Error('AI endpoint returned ' + response.status);
+    }
+
+    // Some LLM endpoints append trailing text after JSON — salvage gracefully
+    const rawText = await response.text();
+    let parsed;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch (parseErr) {
+      const firstBrace = rawText.indexOf('{');
+      const lastBrace = rawText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        try { parsed = JSON.parse(rawText.slice(firstBrace, lastBrace + 1)); }
+        catch { throw parseErr; }
+      } else {
+        throw parseErr;
+      }
+    }
+
+    const summary = parsed.choices?.[0]?.message?.content;
+    if (!summary) throw new Error('AI response had no content');
+
+    return { summary: summary.trim(), empty: false };
+  } catch (err) {
+    logger.error('Summary generation failed', { error: err.message, phone });
+    return { summary: null, empty: false, error: err.message };
+  }
+}
+
+/** GET /api/notes/:phone — list notes for a conversation */
+app.get('/api/notes/:phone', (req, res) => {
+  try {
+    const phone = req.params.phone;
+    const rows = db.prepare(
+      'SELECT * FROM conversation_notes WHERE phone = ? ORDER BY updated_at DESC'
+    ).all(phone);
+    res.json(rows);
+  } catch (err) {
+    logger.error('Notes list error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** POST /api/notes/:phone/generate — AI-generate a conversation summary */
+app.post('/api/notes/:phone/generate', async (req, res) => {
+  try {
+    const phone = req.params.phone;
+    const result = await generateConversationSummary(phone);
+
+    if (result.empty) {
+      return res.json({ note: null, empty: true });
+    }
+
+    if (!result.summary) {
+      return res.status(500).json({ error: 'Failed to generate summary', detail: result.error });
+    }
+
+    // Upsert: remove old auto-generated note for this phone, then insert new one
+    db.prepare('DELETE FROM conversation_notes WHERE phone = ? AND is_auto_generated = 1').run(phone);
+    const now = Date.now();
+    const info = db.prepare(
+      'INSERT INTO conversation_notes (phone, body, author, is_auto_generated, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)'
+    ).run(phone, result.summary, 'Sorc AI', now, now);
+
+    // Return the created note
+    const note = db.prepare('SELECT * FROM conversation_notes WHERE id = ?').get(info.lastInsertRowid);
+    res.json({ note, empty: false });
+  } catch (err) {
+    logger.error('Notes generate error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** POST /api/notes/:phone — manually create a note */
+app.post('/api/notes/:phone', express.json(), (req, res) => {
+  try {
+    const phone = req.params.phone;
+    const { body } = req.body || {};
+    if (!body || !body.trim()) {
+      return res.status(400).json({ error: 'body is required' });
+    }
+    const now = Date.now();
+    const info = db.prepare(
+      'INSERT INTO conversation_notes (phone, body, author, is_auto_generated, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)'
+    ).run(phone, body.trim(), 'Dashboard User', now, now);
+    res.json({ id: info.lastInsertRowid, ok: true });
+  } catch (err) {
+    logger.error('Notes create error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** PUT /api/notes/:id — update a note (human editing AI summary) */
+app.put('/api/notes/:id', express.json(), (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'invalid id' });
+    const { body } = req.body || {};
+    if (!body || !body.trim()) {
+      return res.status(400).json({ error: 'body is required' });
+    }
+    // When a human edits, flip is_auto_generated to 0
+    db.prepare(
+      'UPDATE conversation_notes SET body = ?, is_auto_generated = 0, updated_at = ? WHERE id = ?'
+    ).run(body.trim(), Date.now(), id);
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Notes update error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** DELETE /api/notes/:id — delete a note */
+app.delete('/api/notes/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'invalid id' });
+    db.prepare('DELETE FROM conversation_notes WHERE id = ?').run(id);
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Notes delete error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /** POST /api/send-message — send a message from the dashboard */
 app.post('/api/send-message', express.json(), async (req, res) => {
   try {
@@ -327,8 +582,18 @@ app.post('/api/send-message', express.json(), async (req, res) => {
     if (!phone || !message || !message.trim()) {
       return res.status(400).json({ error: 'phone and message are required' });
     }
-    // Ensure JID format
-    const jid = phone.includes('@') ? phone : phone + '@c.us';
+    // Resolve the exact JID from existing messages — WhatsApp is migrating from
+    // @c.us to @lid / @s.whatsapp.net, so guessing the suffix breaks for
+    // newer accounts. Match on the numeric portion regardless of suffix.
+    const clean = phone.replace(/[^0-9]/g, '');
+    const jidRow = db.prepare(`
+      SELECT DISTINCT from_number FROM messages
+      WHERE SUBSTR(from_number, 1, INSTR(from_number || '@', '@') - 1) = ?
+      LIMIT 1
+    `).get(clean);
+    const jid = jidRow
+      ? jidRow.from_number
+      : phone.includes('@') ? phone : clean + '@c.us';
     await whatsapp.sendMessage(jid, message.trim(), { isAiReply: false });
     // Broadcast conversation update
     io.emit('conversations:update');
@@ -349,6 +614,88 @@ app.delete('/api/conversations/:phone', (req, res) => {
     res.json({ ok: true, ...result });
   } catch (err) {
     logger.error('Delete conversation API error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** GET /api/conversations/search — full-text search across all messages */
+app.get('/api/conversations/search', (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    const phone = (req.query.phone || '').trim();
+    if (!q && !phone) {
+      return res.json({ results: [] });
+    }
+    const likeQ = q ? '%' + q.replace(/[%_]/g, '\\$&') + '%' : '';
+    const likePhone = phone ? '%' + phone.replace(/[^0-9]/g, '') + '%' : '';
+
+    let sql, params;
+    if (q && phone) {
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      sql = `
+        SELECT m.id, m.from_number, m.to_number, m.body, m.timestamp, m.direction, m.is_ai_reply,
+               cs.display_name
+        FROM messages m
+        LEFT JOIN conversation_state cs ON cs.phone = SUBSTR(m.from_number, 1, INSTR(m.from_number || '@', '@') - 1)
+        WHERE m.body LIKE ? ESCAPE '\\'
+          AND (m.from_number LIKE ? OR m.to_number LIKE ?)
+        ORDER BY m.timestamp DESC
+        LIMIT 30
+      `;
+      params = [likeQ, likePhone, likePhone];
+    } else if (q) {
+      sql = `
+        SELECT m.id, m.from_number, m.to_number, m.body, m.timestamp, m.direction, m.is_ai_reply,
+               cs.display_name
+        FROM messages m
+        LEFT JOIN conversation_state cs ON cs.phone = SUBSTR(m.from_number, 1, INSTR(m.from_number || '@', '@') - 1)
+        WHERE m.body LIKE ? ESCAPE '\\'
+        ORDER BY m.timestamp DESC
+        LIMIT 30
+      `;
+      params = [likeQ];
+    } else if (phone) {
+      sql = `
+        SELECT m.id, m.from_number, m.to_number, m.body, m.timestamp, m.direction, m.is_ai_reply,
+               cs.display_name
+        FROM messages m
+        LEFT JOIN conversation_state cs ON cs.phone = SUBSTR(m.from_number, 1, INSTR(m.from_number || '@', '@') - 1)
+        WHERE m.from_number LIKE ? OR m.to_number LIKE ?
+        ORDER BY m.timestamp DESC
+        LIMIT 30
+      `;
+      params = [likePhone, likePhone];
+    }
+
+    const rows = db.prepare(sql).all(...params);
+
+    // Group results by phone
+    const grouped = {};
+    for (const row of rows) {
+      const phoneKey = row.from_number ? row.from_number.split('@')[0] : 'unknown';
+      if (!grouped[phoneKey]) {
+        grouped[phoneKey] = {
+          phone: phoneKey,
+          displayName: row.display_name || null,
+          messages: [],
+        };
+      }
+      grouped[phoneKey].messages.push({
+        id: row.id,
+        body: row.body,
+        timestamp: row.timestamp,
+        direction: row.direction,
+        is_ai_reply: row.is_ai_reply === 1,
+      });
+    }
+
+    const results = Object.values(grouped).sort(
+      (a, b) => (b.messages[0]?.timestamp || 0) - (a.messages[0]?.timestamp || 0)
+    );
+
+    res.json({ results, total: rows.length });
+  } catch (err) {
+    logger.error('Conversation search error', { error: err.message });
     res.status(500).json({ error: err.message });
   }
 });
